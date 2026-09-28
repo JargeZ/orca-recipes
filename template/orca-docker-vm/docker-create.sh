@@ -45,7 +45,8 @@ for k in user.name user.email; do
   [ -z "$v" ] || docker exec -u dev "$name" git config --global "$k" "$v"
 done
 
-docker exec -i -u dev "$name" bash -s <<<"$(sync_script)" >&2
+docker exec -i -u dev "$name" bash -s <<<"$(sync_script)" >&2 \
+  || { echo "Syncing '$repo_ref' from $repo_url failed: is '$repo_ref' pushed there?" >&2; exit 1; }
 
 # Checks what an Orca session actually gets: SSH login env, Claude auth, git auth.
 ssh_opts=(-i "$key" -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes)
