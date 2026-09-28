@@ -29,12 +29,16 @@ esac
 read -rsp "Paste the token: " token
 echo
 [ -n "$token" ] || { echo "Empty token, nothing saved" >&2; exit 1; }
-# Global config ignored: its credential helpers or insteadOf rewrites could mask a bad token.
+# A dry-run push authenticates even on a public or empty repo (ls-remote does neither) and needs
+# write access. Global config ignored: its credential helpers or insteadOf rewrites could mask a bad token.
 # shellcheck disable=SC2016  # the helper expands the token itself
-ORCA_GIT_TOKEN="$token" GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 git \
+if ! ORCA_GIT_TOKEN="$token" GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 git -C "$here" \
   -c credential.helper= -c 'credential.helper=!f() { printf "username=x-access-token\npassword=%s\n" "$ORCA_GIT_TOKEN"; }; f' \
-  ls-remote --exit-code "$repo_url" HEAD >/dev/null
-echo "Token can read $repo_url." >&2
+  push -q --dry-run "$repo_url" HEAD:refs/heads/orca-token-check >/dev/null; then
+  echo "Token can't push to $repo_url (see git's error above), nothing saved" >&2
+  exit 1
+fi
+echo "Token can write to $repo_url." >&2
 
 # -l shows in the macOS access prompt; -D and -j in Keychain Access.
 security add-generic-password -U -s "$git_token_keychain_service" -a "$USER" \
