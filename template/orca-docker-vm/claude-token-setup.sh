@@ -17,5 +17,9 @@ read -rsp "Paste the token printed above: " token
 echo
 [ -n "$token" ] || { echo "Empty token, nothing saved" >&2; exit 1; }
 
-security add-generic-password -U -s "$claude_token_keychain_service" -a "$USER" -w "$token"
+# -l shows in the macOS access prompt; -D and -j in Keychain Access.
+security add-generic-password -U -s "$claude_token_keychain_service" -a "$USER" \
+  -l "Orca: Claude Code token for Docker workspaces" -D "Orca Claude token" \
+  -j "Long-lived token from 'claude setup-token', shared by every project using orca-docker-vm. Written by 'task orca:claude-token'; read by orca-docker-vm/docker-create.sh and passed into each workspace container as CLAUDE_CODE_OAUTH_TOKEN." \
+  -w "$token"
 echo "Saved to Keychain as '$claude_token_keychain_service'."
