@@ -39,6 +39,6 @@ echo "Token can read $repo_url." >&2
 # -l shows in the macOS access prompt; -D and -j in Keychain Access.
 security add-generic-password -U -s "$git_token_keychain_service" -a "$USER" \
   -l "Orca: $project_slug git token for Docker workspaces" -D "Orca git token" \
-  -j "Access token scoped to $repo_url only. Written by 'task orca:git-token'; read by orca-docker-vm/docker-create.sh and passed into each $project_slug workspace container as $git_token_env for git and the $git_host CLI." \
+  -j "Access token scoped to $repo_url only. Written by orca-docker-vm/git-token-setup.sh; read by orca-docker-vm/docker-create.sh and passed into each $project_slug workspace container as $git_token_env for git and the $git_host CLI." \
   -w "$token"
 echo "Saved to Keychain as '$git_token_keychain_service'."

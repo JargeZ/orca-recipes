@@ -20,6 +20,6 @@ echo
 # -l shows in the macOS access prompt; -D and -j in Keychain Access.
 security add-generic-password -U -s "$claude_token_keychain_service" -a "$USER" \
   -l "Orca: Claude Code token for Docker workspaces" -D "Orca Claude token" \
-  -j "Long-lived token from 'claude setup-token', shared by every project using orca-docker-vm. Written by 'task orca:claude-token'; read by orca-docker-vm/docker-create.sh and passed into each workspace container as CLAUDE_CODE_OAUTH_TOKEN." \
+  -j "Long-lived token from 'claude setup-token', shared by every project using orca-docker-vm. Written by orca-docker-vm/claude-token-setup.sh; read by orca-docker-vm/docker-create.sh and passed into each workspace container as CLAUDE_CODE_OAUTH_TOKEN." \
   -w "$token"
 echo "Saved to Keychain as '$claude_token_keychain_service'."

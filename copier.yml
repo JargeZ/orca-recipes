@@ -9,11 +9,8 @@ _message_after_copy: |
   Orca Docker recipe rendered into orca-docker-vm/.
   Next:
     1. Review {{ dev_dockerfile }} (your deps; must be Debian/Ubuntu-based).
-    2. Add to your Taskfile.yaml:
-         includes:
-           orca: ./orca-docker-vm/Taskfile.yaml
-    3. If orca.yaml already existed, add the `docker` recipe from the README.
-    4. task orca:setup
+    2. If orca.yaml already existed, add the `docker` recipe from the README.
+    3. ./orca-docker-vm/prepare.sh
 
 project_slug:
   type: str

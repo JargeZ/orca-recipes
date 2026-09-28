@@ -50,8 +50,8 @@ baked into the image.
 
 ## Using it in a project
 
-Requirements on the host: macOS (tokens live in the Keychain), Docker or OrbStack, `jq`, `uv`
-(for `uvx copier`) and [Task](https://taskfile.dev).
+Requirements on the host: macOS (tokens live in the Keychain), Docker or OrbStack, `jq` and `uv`
+(for `uvx copier`).
 
 ```bash
 uvx copier copy gh:JargeZ/orca-recipes .      # or a local path to this repo
@@ -86,26 +86,32 @@ The copy creates the following files:
       destroy: ./orca-docker-vm/docker-destroy.sh
   ```
 
-Include the recipe tasks in the project's `Taskfile.yaml`:
+Then provision:
+
+```bash
+./orca-docker-vm/prepare.sh      # Claude token → git token → base image → end-to-end self-test
+```
+
+`prepare.sh` is idempotent and just runs the individual scripts in order:
+
+| Script | What it does |
+|---|---|
+| `claude-token-setup.sh` | `claude setup-token` → Keychain (once per machine, ~1 year; `FORCE=1` to reissue) |
+| `git-token-setup.sh` | Prints where to create a repo-scoped token, verifies it with `git ls-remote`, saves it to the Keychain (`FORCE=1` to replace) |
+| `docker-base-image.sh` | Rebuilds the image; rerun after `dev.Dockerfile` or dependency changes |
+| `update.sh` | `copier update` to the latest template; pin with `--vcs-ref v1.2.0` |
+
+The last step of `prepare.sh` is `orca vm recipe doctor docker --provision`: a real create + destroy.
+
+If the project uses [Task](https://taskfile.dev), the same steps are available as tasks:
 
 ```yaml
 includes:
   orca: ./orca-docker-vm/Taskfile.yaml
 ```
 
-Then provision:
-
-```bash
-task orca:setup          # Claude token → git token → base image → end-to-end self-test
-```
-
-| Task | What it does |
-|---|---|
-| `orca:claude-token` | `claude setup-token` → Keychain (once per machine, ~1 year) |
-| `orca:git-token` | Prints where to create a repo-scoped token, verifies it with `git ls-remote`, saves it to the Keychain |
-| `orca:base-image` | Rebuilds the image; rerun after `dev.Dockerfile` or dependency changes |
-| `orca:check` | `orca vm recipe doctor docker --provision`: real create + destroy |
-| `orca:update` | `copier update` to the latest template; pin with `-- --vcs-ref v1.2.0` |
+`task orca:setup`, `orca:claude-token`, `orca:git-token`, `orca:base-image`, `orca:check`,
+`orca:update`.
 
 ### Tokens
 
@@ -129,18 +135,18 @@ container's `/etc/environment`, so they stay out of the image, `docker inspect` 
 Releases are git tags. In a project:
 
 ```bash
-task orca:update                         # latest tag
-task orca:update -- --vcs-ref v1.2.0     # specific version
+./orca-docker-vm/update.sh                    # latest tag
+./orca-docker-vm/update.sh --vcs-ref v1.2.0   # specific version
 ```
 
 Copier re-renders `orca-docker-vm/` and three-way merges it with your local changes. It leaves
 `dev.Dockerfile` and `orca.yaml` alone. After an update that touches `infra.Dockerfile`, run
-`task orca:base-image`.
+`./orca-docker-vm/docker-base-image.sh`.
 
 ## Developing this template
 
 This repo uses its own template: `orca-docker-vm/`, `dev.Dockerfile` and `orca.yaml` at the root
-are rendered from `template/`, and the root `Taskfile.yaml` includes `orca:` like any project.
+are rendered from `template/`, and the root `Taskfile.yaml` includes `orca:` like a project using Task.
 
 ```
 copier.yml       questions, derived values, project-owned files

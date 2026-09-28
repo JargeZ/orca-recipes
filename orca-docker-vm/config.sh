@@ -1,5 +1,5 @@
 # shellcheck shell=bash disable=SC2034
-# Rendered by copier from orca-docker-vm/.copier-answers.yml; edit answers via `task orca:update`.
+# Rendered by copier from orca-docker-vm/.copier-answers.yml; edit answers via `orca-docker-vm/update.sh`.
 project_slug='orca-recipes'
 image="localhost/${project_slug}-orca"
 repo_url='https://github.com/JargeZ/orca-recipes.git'

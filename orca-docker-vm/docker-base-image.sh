@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hand-run (`task orca:base-image`). Builds the project's dev image, then layers the Orca infra, the
+# Hand-run (also run by prepare.sh). Builds the project's dev image, then layers the Orca infra, the
 # repo checkout and its deps on top: the image every `create` boots. Needs no token: the checkout
 # is a clone of the local repo, so only committed files reach the image and no secret enters a build.
 set -euo pipefail
