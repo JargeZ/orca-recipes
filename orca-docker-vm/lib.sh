@@ -4,7 +4,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=config.sh
 source "$here/config.sh"
 
-# Where tokens live, picked per host (ORCA_SECRET_STORE forces one):
+# Where the git token lives, picked per host (ORCA_SECRET_STORE forces one):
 #   keychain        macOS Keychain (`security`)
 #   secret-service  Linux desktop keyring over D-Bus: GNOME Keyring, KWallet, KeePassXC (`secret-tool`)
 #   file            no keyring (headless/SSH host): a 0600 file under ~/.config/orca-docker-vm
@@ -47,7 +47,10 @@ secret_set() {  # secret_set <name> <label> <comment> <token>
   echo "Saved to $(secret_where "$1")." >&2
 }
 
-claude_token() { printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN:-$(secret_get "$claude_token_keychain_service")}"; }
+# Claude Code's login and state live in a named volume shared by every workspace container, mounted at
+# CLAUDE_CONFIG_DIR (set in infra.Dockerfile), as in Anthropic's dev container guide.
+claude_mount="$claude_volume:/home/dev/.claude"
+claude_run() { docker run --rm -u dev --entrypoint claude -v "$claude_mount" "$@"; }  # claude_run [-it] <image> <args>
 
 # Token scoped to this repo only; never the host's broad `gh auth token`.
 git_token() { printf '%s' "${ORCA_GIT_TOKEN:-$(secret_get "$git_token_keychain_service")}"; }

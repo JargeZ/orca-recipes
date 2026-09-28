@@ -11,4 +11,5 @@ git_host='github.com'
 # Name the token gets inside the container, so the host's CLI (gh/glab) finds it too.
 git_token_env='GH_TOKEN'
 git_token_keychain_service='orca-recipes-orca-git-token'
-claude_token_keychain_service='orca-claude-token'
+# Docker volume with the Claude Code login, shared by all projects.
+claude_volume='orca-claude'

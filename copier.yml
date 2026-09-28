@@ -48,10 +48,10 @@ git_token_keychain_service:
   help: Keyring entry holding this repo's scoped git token
   default: "{{ project_slug }}-orca-git-token"
 
-claude_token_keychain_service:
+claude_volume:
   type: str
-  help: Keyring entry holding the long-lived Claude token (shared by all projects)
-  default: orca-claude-token
+  help: Docker volume holding the Claude Code login (shared by all projects)
+  default: orca-claude
 
 git_host:
   type: str

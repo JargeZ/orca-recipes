@@ -12,4 +12,5 @@ git_host={{ q(git_host) }}
 # Name the token gets inside the container, so the host's CLI (gh/glab) finds it too.
 git_token_env={{ q(git_token_env) }}
 git_token_keychain_service={{ q(git_token_keychain_service) }}
-claude_token_keychain_service={{ q(claude_token_keychain_service) }}
+# Docker volume with the Claude Code login, shared by all projects.
+claude_volume={{ q(claude_volume) }}

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Hand-run: provisions everything the "Local Docker" Orca recipe needs (idempotent).
-# Claude token → git token → base image → end-to-end self-test (real create + destroy).
+# Git token → base image → Claude login → end-to-end self-test (real create + destroy).
+# Every step checks first and only asks for input when something is missing or broken, so rerunning
+# it is how you fix things.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(git -C "$here" rev-parse --show-toplevel)"
@@ -8,15 +10,15 @@ root="$(git -C "$here" rev-parse --show-toplevel)"
 step() { printf '\n==> [%s/4] %s\n' "$1" "$2" >&2; }
 trap 'echo "prepare.sh: failed at step $n, see the output above" >&2' ERR
 
-n=1; step $n "Claude token (keyring)"
-"$here/claude-token-setup.sh"
-
-n=2; step $n "Git token (keyring)"
+n=1; step $n "Git token (keyring)"
 "$here/git-token-setup.sh"
 
-n=3; step $n "Base image (docker build)"
+n=2; step $n "Base image (docker build)"
 "$here/docker-base-image.sh"
 echo "Image built." >&2
+
+n=3; step $n "Claude login (shared Docker volume)"
+"$here/claude-login.sh"
 
 n=4; step $n "orca vm recipe doctor: real create + destroy of a workspace (takes a minute)"
 report="$(orca vm recipe doctor docker --repo-path "$root" --provision --json || true)"

@@ -2,15 +2,13 @@
 # Slow, needs Docker + network: runs this repo's own recipe (`task render` first) for real - builds
 # the image, creates a workspace container, checks what an Orca SSH session gets, then destroys it.
 # create fetches repo_ref from GitHub, so the branch must be pushed.
-# Env: ORCA_GIT_TOKEN (default: `gh auth token`, test-only) and CLAUDE_CODE_OAUTH_TOKEN
-#      (default: host keyring entry E2E_CLAUDE_KEYCHAIN, default orca-claude-token).
+# Needs the Claude login volume set up (orca-docker-vm/claude-login.sh).
+# Env: ORCA_GIT_TOKEN (default: `gh auth token`, test-only).
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 export ORCA_GIT_TOKEN="${ORCA_GIT_TOKEN:-$(gh auth token)}"
 s="$root/orca-docker-vm"
 source "$s/lib.sh"
-export CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN:-$(secret_get "${E2E_CLAUDE_KEYCHAIN:-orca-claude-token}")}"
-[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || fail "no Claude token"
 
 result=""
 cleanup() {
@@ -20,15 +18,14 @@ cleanup() {
 trap cleanup EXIT
 
 "$s/docker-base-image.sh"
-for t in "$ORCA_GIT_TOKEN" "$CLAUDE_CODE_OAUTH_TOKEN"; do
-  { docker image inspect "$image"; docker history --no-trunc "$image"; } | grep -qF "$t" && fail "token baked into image"
-done
+{ docker image inspect "$image"; docker history --no-trunc "$image"; } | grep -qF "$ORCA_GIT_TOKEN" && fail "token baked into image"
 result="$(ORCA_VM_INSTANCE_ID="e2e-$$" "$s/docker-create.sh")"
 name="$(jq -er .userData.resourceId <<<"$result")"
 port="$(jq -er .connection.target.port <<<"$result")"
 
 on() { ssh -i "$s/.ssh/id_ed25519" -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes dev@127.0.0.1 "$@"; }
 on 'gh auth status' >/dev/null 2>&1 || fail "gh not authenticated in SSH session"
+on 'claude -p --model haiku "Reply with just: ok"' >/dev/null 2>&1 || fail "claude not logged in in SSH session"
 on "cd $project_root && git push --dry-run origin HEAD:refs/heads/orca-e2e-probe" >/dev/null 2>&1 || fail "git push not authorized"
 [ "$(on 'echo $UV_PYTHON_DOWNLOADS')" = never ] || fail "dev.Dockerfile ENV not in SSH session"
 [ "$(on 'bash -lc "echo \$UV_PYTHON_DOWNLOADS"')" = never ] || fail "dev.Dockerfile ENV not in login shell"

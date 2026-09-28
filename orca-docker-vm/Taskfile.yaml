@@ -8,11 +8,11 @@ tasks:
     cmds:
       - '{{.TASKFILE_DIR}}/prepare.sh'
 
-  claude-token:
-    desc: Store a long-lived Claude token in the host keyring (no-op if present, FORCE=1 to reissue)
+  claude-login:
+    desc: Log Claude Code in once into the shared Docker volume (no-op if the login works, FORCE=1 to redo)
     interactive: true
     cmds:
-      - '{{.TASKFILE_DIR}}/claude-token-setup.sh'
+      - '{{.TASKFILE_DIR}}/claude-login.sh'
 
   git-token:
     desc: Store a git token scoped to this repo in the host keyring (no-op if present, FORCE=1 to replace)

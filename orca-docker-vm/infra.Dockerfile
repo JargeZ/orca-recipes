@@ -35,11 +35,13 @@ RUN git config --system "credential.https://${GIT_HOST}.helper" /usr/local/bin/g
 
 USER dev
 RUN curl -fsSL https://claude.ai/install.sh | bash \
-    # Auth comes from CLAUDE_CODE_OAUTH_TOKEN at runtime; skip the interactive first-run wizard.
-    && echo '{"hasCompletedOnboarding": true}' > /home/dev/.claude.json
+    # The shared login volume is mounted here (docker-create.sh); a new volume starts as a copy of this
+    # dir, so the first-run wizard stays skipped.
+    && mkdir -p /home/dev/.claude && echo '{"hasCompletedOnboarding": true}' > /home/dev/.claude/.claude.json
 USER root
 
 ENV PATH=/home/dev/.local/bin:$PATH \
+    CLAUDE_CONFIG_DIR=/home/dev/.claude \
     # Debian's node-gyp imports the distro `gyp` module, absent from non-distro python3s.
     npm_config_python=/usr/bin/python3
 # SSH sessions don't inherit image ENV (including the dev image's): pam_env reads /etc/environment,
