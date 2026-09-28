@@ -1,195 +1,111 @@
-# orca-recipes
+<div align="center">
 
-A [copier](https://copier.readthedocs.io/) template for Orca
-per-workspace environments. Each Orca workspace gets a fresh local Docker container that Orca
-reaches over SSH, with the repo checked out, deps installed, and Claude Code, `git` and `gh`
-already authenticated.
+# 🐳 orca-recipes
 
-Each project describes only its own toolchain in `dev.Dockerfile`. The template adds the shared
-infrastructure and keeps it updatable with `copier update`.
+**One-click isolated Docker environment for every Orca ADE workspace**
 
-## How the image is built
+[![Last commit](https://img.shields.io/github/last-commit/JargeZ/orca-recipes?style=flat-square)](https://github.com/JargeZ/orca-recipes/commits/main)
+[![Commit activity](https://img.shields.io/github/commit-activity/m/JargeZ/orca-recipes?style=flat-square)](https://github.com/JargeZ/orca-recipes/graphs/commit-activity)
+[![Release](https://img.shields.io/github/v/tag/JargeZ/orca-recipes?style=flat-square&label=release)](https://github.com/JargeZ/orca-recipes/tags)
+[![Stars](https://img.shields.io/github/stars/JargeZ/orca-recipes?style=flat-square)](https://github.com/JargeZ/orca-recipes/stargazers)
+[![Issues](https://img.shields.io/github/issues/JargeZ/orca-recipes?style=flat-square)](https://github.com/JargeZ/orca-recipes/issues)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/JargeZ/orca-recipes/pulls)
+<br>
+[![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-grayscale-inverted-border-orange.json&style=flat-square)](https://github.com/copier-org/copier)
+[![Docker](https://img.shields.io/badge/Docker-local-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-ready-D97757?style=flat-square&logo=anthropic&logoColor=white)](https://code.claude.com)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey?style=flat-square)](#)
 
-```
-dev.Dockerfile           project-owned: base image, system packages, language toolchain, ENV
-  └─ infra.Dockerfile    template: sshd, `dev` user (uid 1000), Node for Orca's SSH relay,
-                         gh, task, Claude Code, git credential helper, ENV → SSH sessions,
-                         then the repo at project_root + sync command run as `dev`
-          = localhost/<project_slug>-orca    (what every workspace boots from)
-```
+**English** · [Русский](README.ru.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [Português (BR)](README.pt-BR.md) · [Español](README.es.md) · [Français](README.fr.md)
 
-The checkout in the image is a clone of your **local** repo at `repo_ref` (committed files only),
-passed to `docker build` as a named build context. So building needs no token, and no secret ever
-enters a build step, a layer or the image config.
+</div>
 
-On each workspace, `docker-create.sh` does the following:
+---
 
-1. Boots a container from that image, with the shared Claude login volume mounted.
-2. Writes the git token into the container's `/etc/environment`. The token is never stored in
-   the image.
-3. Copies your host `git config user.name` and `user.email` into the container.
-4. Fetches `repo_ref` and runs the sync command again, in case the lock file moved.
-5. Checks over SSH what an Orca session will get: `claude auth status` and `git ls-remote`.
+## ✨ What it is
 
-`docker-destroy.sh` removes the container and its `known_hosts` entry.
+A recipe template for **Orca ADE** that creates an isolated environment in your local Docker for
+every workspace, in one click.
 
-### `dev.Dockerfile` contract
+- 🔐 **Fine-grained git tokens** — the token is scoped to a single repository
+- 🤖 **OAuth login for agents** — log in once, it works in every workspace
+- 🗝️ **Secrets in the system keychain** — macOS Keychain / Linux Secret Service, nothing ends up in the image
 
-- **Debian or Ubuntu base.** The infra layer uses `apt`, and Orca's relay needs the distro's Node 18+.
-- **Sync writes go to paths owned by uid 1000.** The sync command runs as `dev` (uid 1000). Any
-  path it writes outside the checkout (a shared venv, caches) must be `chown 1000:1000` in
-  `dev.Dockerfile`. If the base image already has a uid 1000 user (for example `ubuntu` in
-  `ubuntu:24.04`), the infra layer replaces it with `dev`.
-- **`ENV` reaches every SSH session.** Every `ENV` you set is copied into Orca's SSH sessions,
-  including login shells.
-- **Build context is the repo root.** `COPY` of lock files and similar works.
+## 🤖 Supported agents
 
-The starter `dev.Dockerfile` targets Python + uv with a shared venv at `/opt/venv`. The shared venv
-exists because Orca checks out linked worktrees at other paths, and each of them reuses the deps
-baked into the image.
+| Agent | Status |
+|---|---|
+| Claude Code | ✅ Yes |
+| cursor-agent | 🚧 Soon |
+| opencode | 🚧 Soon |
+| …others | 💡 [PRs welcome](https://github.com/JargeZ/orca-recipes/pulls) |
 
-## Using it in a project
+## 🚀 Installation
 
-Requirements on the host: macOS or Linux, Docker (or OrbStack), `jq` and `uv` (for `uvx copier`).
-The git token is stored in the host keyring, see [Where tokens are stored](#where-tokens-are-stored).
+**Requirements:** macOS or Linux, Docker (or OrbStack), `jq`, `uv`.
+
+**1. Render the template** in the root of your project:
 
 ```bash
-uvx copier copy gh:JargeZ/orca-recipes .      # or a local path to this repo
+uvx copier copy gh:JargeZ/orca-recipes .
 ```
 
-Copier asks the following questions:
+> [!NOTE]
+> If you already had an `orca.yaml`, the template won't overwrite it — add the recipe yourself:
+>
+> ```yaml
+> environmentRecipes:
+>   - id: docker
+>     name: Local Docker
+>     create: ./orca-docker-vm/docker-create.sh
+>     destroy: ./orca-docker-vm/docker-destroy.sh
+> ```
 
-| Question | Default | Meaning |
-|---|---|---|
-| `project_slug` | folder name | Image name `localhost/<slug>-orca`, default keyring entry names |
-| `repo_url` | — | HTTPS clone URL; `github.com` or a GitLab host |
-| `repo_ref` | `main` | Branch the image and new workspaces start from |
-| `project_root` | `/home/dev/<slug>` | Checkout path inside the container |
-| `dev_dockerfile` | `dev.Dockerfile` | Your Dockerfile, relative to the repo root |
-| `sync_command` | `uv sync` | Installs deps, e.g. `poetry install --with dev` |
-| `git_token_keychain_service` | `<slug>-orca-git-token` | Keyring entry with this repo's scoped token |
-| `claude_volume` | `orca-claude` | Docker volume with the Claude Code login, shared by all projects |
+**2. Write your `dev.Dockerfile`** — install everything your project needs for development.
+The template creates a Python + uv example ([template/dev.Dockerfile](template/dev.Dockerfile)); adapt it
+to your stack. The image requirements are in the comments at the top of the file: Debian/Ubuntu base
+only, and any path outside the repo that dependency installation writes to must be owned by uid 1000.
 
-The copy creates the following files:
-
-- `orca-docker-vm/`: the recipe. It is template-owned, so change it through the template, not
-  locally.
-- `orca-docker-vm/.copier-answers.yml`: your answers and the template version.
-- `dev.Dockerfile` and `orca.yaml`: created only if they are missing, and never touched by updates.
-  If `orca.yaml` already existed, add this recipe to it:
-
-  ```yaml
-  environmentRecipes:
-    - id: docker
-      name: Local Docker
-      create: ./orca-docker-vm/docker-create.sh
-      destroy: ./orca-docker-vm/docker-destroy.sh
-  ```
-
-Then provision:
+**3. Run the prepare script** (safe to rerun):
 
 ```bash
-./orca-docker-vm/prepare.sh      # git token → base image → Claude login → end-to-end self-test
+./orca-docker-vm/prepare.sh
 ```
 
-`prepare.sh` runs the individual scripts in order and says what each step does. Every step checks
-first and only asks for input when something is missing or broken, so if anything breaks later (an
-expired token, a logged-out Claude), rerunning `prepare.sh` fixes it.
+It sets up the git token, builds the base image, logs Claude in and runs a self-test.
+Once everything is green, create a new workspace in the Orca UI and check that it comes up.
 
-| Script | What it does |
-|---|---|
-| `git-token-setup.sh` | Prints where to create a repo-scoped token, verifies it with a `git push --dry-run`, saves it to the keyring (`FORCE=1` to replace) |
-| `docker-base-image.sh` | Rebuilds the image; rerun after `dev.Dockerfile` or dependency changes |
-| `claude-login.sh` | Checks the Claude login with a one-line request; if it fails, runs `claude auth login` in a container (`FORCE=1` to redo) |
-| `update.sh` | `copier update` to the latest template; pin with `--vcs-ref v1.2.0` |
+If something goes wrong, ask your agent to fix it: after rendering, all the recipe code lives in
+your repository (`orca-docker-vm/`).
 
-The last step of `prepare.sh` is `orca vm recipe doctor docker --provision`: a real create + destroy.
+> [!TIP]
+> Using [Task](https://taskfile.dev)? Add `orca: ./orca-docker-vm/Taskfile.yaml` to `includes`
+> and run `task orca:setup`.
 
-If the project uses [Task](https://taskfile.dev), the same steps are available as tasks:
+### 🔄 Updating
 
-```yaml
-includes:
-  orca: ./orca-docker-vm/Taskfile.yaml
-```
-
-`task orca:setup`, `orca:claude-login`, `orca:git-token`, `orca:base-image`, `orca:check`,
-`orca:update`.
-
-### Tokens
-
-- **Git.** Use a token scoped to one repo: a fine-grained PAT on GitHub (Contents, Pull requests,
-  Issues, Workflows: read and write), or a project access token on GitLab. Never use the host's
-  broad `gh auth token`: every agent in the container can read the token. Inside the container
-  it is exported as `GH_TOKEN` or `GITLAB_TOKEN` (so `gh` or `glab` pick it up), and git uses it
-  only for the repo's host. `ORCA_GIT_TOKEN` in the environment overrides the keyring.
-- **Claude.** A normal `claude auth login` (OAuth, refreshed by Claude Code itself), the way
-  [Anthropic's dev container guide](https://code.claude.com/docs/en/devcontainer#persist-authentication-and-settings-across-rebuilds)
-  persists it: a named Docker volume (`orca-claude`) that every workspace container mounts at
-  `/home/dev/.claude`, with `CLAUDE_CONFIG_DIR` pointing there. You log in once for all projects,
-  and there is no Claude token on the host or in `/etc/environment`. Session history and settings
-  in that directory are shared between workspaces too. Unlike a `claude setup-token` token,
-  this login also supports Remote Control and claude.ai connectors. The volume holds a refresh
-  token that agents in the container can read; revoke it with `/logout` if needed.
-
-### Where tokens are stored
-
-The scripts choose the store for the host automatically. `ORCA_SECRET_STORE=keychain|secret-service|file`
-forces one.
-
-| Host | Store |
-|---|---|
-| macOS | Keychain (`security`) |
-| Linux desktop | Secret Service over D-Bus through `secret-tool` (package `libsecret-tools` / `libsecret`): GNOME Keyring, KWallet 5.97+, KeePassXC |
-| No keyring (headless, SSH session, no D-Bus) | `~/.config/orca-docker-vm/<entry>`, mode 0600, plain text |
-
-On hosts with no keyring, `ORCA_GIT_TOKEN` in the environment also
-works: `docker-create.sh` reads them before any store. Orca must pass it to the recipe, for example
-from a secrets manager in your shell profile.
-
-The git token exists only at runtime. `docker-create.sh` pipes it over `docker exec` stdin into the
-container's `/etc/environment`, so it stays out of the image, `docker inspect` and
-`docker history`. Plain `docker run` has no runtime secret mounts (`--secret` is Swarm-only), and
-`-e` shows up in `docker inspect`.
-
-`glab` is not in the infra layer. GitLab projects that want it can install it in `dev.Dockerfile`.
-
-## Updating the template
-
-Releases are git tags. In a project:
+Copier updates the template on top of your changes (three-way merge), so pulling a new version of
+the recipe is one command:
 
 ```bash
 ./orca-docker-vm/update.sh                    # latest tag
 ./orca-docker-vm/update.sh --vcs-ref v1.2.0   # specific version
 ```
 
-Copier re-renders `orca-docker-vm/` and three-way merges it with your local changes. It leaves
-`dev.Dockerfile` and `orca.yaml` alone. After an update that touches `infra.Dockerfile`, run
-`./orca-docker-vm/docker-base-image.sh`.
+Updates never touch `dev.Dockerfile` or `orca.yaml`. Details are in [AGENTS.md](AGENTS.md).
 
-## Developing this template
+## 🛠️ Development
 
-This repo uses its own template: `orca-docker-vm/`, `dev.Dockerfile` and `orca.yaml` at the root
-are rendered from `template/`, and the root `Taskfile.yaml` includes `orca:` like a project using Task.
+This project uses **itself** for development in Orca: clone the repo and run it through Orca in
+dynamic environments.
 
-```
-copier.yml       questions, derived values, project-owned files
-template/        rendered into projects (`.jinja` files are templated, the rest copied verbatim)
-orca-docker-vm/  this repo's own render of template/ - don't edit, run `task render`
-dev.Dockerfile   this repo's dev image: uv (copier, shellcheck), jq, rsync
-tests/           render.sh (fast, offline), e2e.sh (Docker, network)
-```
+The [Taskfile](Taskfile.yaml) is the entry point for tests and linters:
 
 ```bash
-task render      # copier recopy from the working tree, uncommitted template changes included
-task test        # render, then: this repo's recipe + fresh GitHub/GitLab renders get shellcheck,
-                 # orca doctor, answer quoting, and an update keeping dev.Dockerfile edits
-task test:e2e    # render, then this repo's recipe for real: build, create, SSH checks, destroy
+task test        # render + shellcheck + orca doctor + update checks (fast, offline)
+task test:e2e    # full Docker run: build, create, SSH checks, destroy
 ```
 
-`task render` uses `copier recopy`, not `update`: update refuses a dirty repo, and here the template
-and the project are the same repo. The image holds committed files only, and `create` fetches
-`repo_ref` from GitHub, so the e2e test needs the branch pushed. It uses the Claude login volume
-(run `orca-docker-vm/claude-login.sh` first) and reads `ORCA_GIT_TOKEN` as the git token, defaulting
-to `gh auth token`, which is acceptable here because the test container is thrown away.
+## 🤝 Contributing
 
-The e2e test also greps the image config and `docker history` for the git token.
+Pull requests that make it **more universal** (new agents, base images, git hosts) are very welcome!
