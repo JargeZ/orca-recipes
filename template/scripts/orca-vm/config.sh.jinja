@@ -1,0 +1,15 @@
+# shellcheck shell=bash disable=SC2034
+{% macro q(v) %}'{{ v | replace("'", "'\\''") }}'{% endmacro -%}
+# Rendered by copier from scripts/orca-vm/.copier-answers.yml; edit answers via `task orca:update`.
+project_slug={{ q(project_slug) }}
+image="localhost/${project_slug}-orca"
+repo_url={{ q(repo_url) }}
+repo_ref={{ q(repo_ref) }}
+project_root={{ q(project_root) }}
+dev_dockerfile={{ q(dev_dockerfile) }}
+sync_command={{ q(sync_command) }}
+git_host={{ q(git_host) }}
+# Name the token gets inside the container, so the host's CLI (gh/glab) finds it too.
+git_token_env={{ q(git_token_env) }}
+git_token_keychain_service={{ q(git_token_keychain_service) }}
+claude_token_keychain_service={{ q(claude_token_keychain_service) }}

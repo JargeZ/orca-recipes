@@ -1,0 +1,67 @@
+_min_copier_version: "9.4"
+_subdirectory: template
+_answers_file: scripts/orca-vm/.copier-answers.yml
+# Project-owned after the first copy: updates never touch them.
+_skip_if_exists:
+  - orca.yaml
+  - dev.Dockerfile
+_message_after_copy: |
+  Orca Docker recipe rendered into scripts/orca-vm/.
+  Next:
+    1. Review {{ dev_dockerfile }} (your deps; must be Debian/Ubuntu-based).
+    2. Add to your Taskfile.yaml:
+         includes:
+           orca: ./scripts/orca-vm/Taskfile.yaml
+    3. If orca.yaml already existed, add the `docker` recipe from the README.
+    4. task orca:setup
+
+project_slug:
+  type: str
+  help: Short project name, used for image and Keychain names
+  default: "{{ _folder_name }}"
+  validator: "{% if not (project_slug | regex_search('^[a-z0-9][a-z0-9_.-]*$')) %}lowercase letters, digits, . _ - only{% endif %}"
+
+repo_url:
+  type: str
+  help: HTTPS clone URL of this repo (github.com or gitlab.com)
+  validator: "{% if not repo_url.startswith('https://') %}must be an https:// URL{% endif %}"
+
+repo_ref:
+  type: str
+  help: Branch the base image and new workspaces start from
+  default: main
+
+project_root:
+  type: str
+  help: Absolute path of the checkout inside the container
+  default: "/home/dev/{{ project_slug }}"
+
+dev_dockerfile:
+  type: str
+  help: Project Dockerfile with your deps, relative to the repo root; the recipe layers infra on top
+  default: dev.Dockerfile
+
+sync_command:
+  type: str
+  help: Command that installs deps inside the checkout (runs as `dev` at image build and on every create)
+  default: uv sync
+
+git_token_keychain_service:
+  type: str
+  help: Keychain entry holding this repo's scoped git token
+  default: "{{ project_slug }}-orca-git-token"
+
+claude_token_keychain_service:
+  type: str
+  help: Keychain entry holding the long-lived Claude token (shared by all projects)
+  default: orca-claude-token
+
+git_host:
+  type: str
+  default: "{{ repo_url.split('/')[2] }}"
+  when: false
+
+git_token_env:
+  type: str
+  default: "{{ 'GITLAB_TOKEN' if 'gitlab' in repo_url else 'GH_TOKEN' }}"
+  when: false

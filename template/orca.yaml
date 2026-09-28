@@ -1,0 +1,5 @@
+environmentRecipes:
+  - id: docker
+    name: Local Docker
+    create: ./scripts/orca-vm/docker-create.sh
+    destroy: ./scripts/orca-vm/docker-destroy.sh

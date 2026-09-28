@@ -1,0 +1,12 @@
+version: '3'
+
+tasks:
+  test:
+    desc: Fast offline checks - render, shellcheck, orca doctor, update keeps project files
+    cmds:
+      - ./tests/render.sh
+
+  test:e2e:
+    desc: Full run against Docker - build image, create, SSH checks, destroy (slow, needs network)
+    cmds:
+      - ./tests/e2e.sh
