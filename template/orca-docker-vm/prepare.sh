@@ -8,10 +8,10 @@ root="$(git -C "$here" rev-parse --show-toplevel)"
 step() { printf '\n==> [%s/4] %s\n' "$1" "$2" >&2; }
 trap 'echo "prepare.sh: failed at step $n, see the output above" >&2' ERR
 
-n=1; step $n "Claude token (Keychain)"
+n=1; step $n "Claude token (keyring)"
 "$here/claude-token-setup.sh"
 
-n=2; step $n "Git token (Keychain)"
+n=2; step $n "Git token (keyring)"
 "$here/git-token-setup.sh"
 
 n=3; step $n "Base image (docker build)"

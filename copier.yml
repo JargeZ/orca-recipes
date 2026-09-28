@@ -14,7 +14,7 @@ _message_after_copy: |
 
 project_slug:
   type: str
-  help: Short project name, used for image and Keychain names
+  help: Short project name, used for image and keyring entry names
   default: "{{ _folder_name }}"
   validator: "{% if not (project_slug | regex_search('^[a-z0-9][a-z0-9_.-]*$')) %}lowercase letters, digits, . _ - only{% endif %}"
 
@@ -45,12 +45,12 @@ sync_command:
 
 git_token_keychain_service:
   type: str
-  help: Keychain entry holding this repo's scoped git token
+  help: Keyring entry holding this repo's scoped git token
   default: "{{ project_slug }}-orca-git-token"
 
 claude_token_keychain_service:
   type: str
-  help: Keychain entry holding the long-lived Claude token (shared by all projects)
+  help: Keyring entry holding the long-lived Claude token (shared by all projects)
   default: orca-claude-token
 
 git_host:

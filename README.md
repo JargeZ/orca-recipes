@@ -50,8 +50,8 @@ baked into the image.
 
 ## Using it in a project
 
-Requirements on the host: macOS (tokens live in the Keychain), Docker or OrbStack, `jq` and `uv`
-(for `uvx copier`).
+Requirements on the host: macOS or Linux, Docker (or OrbStack), `jq` and `uv` (for `uvx copier`).
+Tokens are stored in the host keyring, see [Where tokens are stored](#where-tokens-are-stored).
 
 ```bash
 uvx copier copy gh:JargeZ/orca-recipes .      # or a local path to this repo
@@ -61,14 +61,14 @@ Copier asks the following questions:
 
 | Question | Default | Meaning |
 |---|---|---|
-| `project_slug` | folder name | Image name `localhost/<slug>-orca`, default Keychain name |
+| `project_slug` | folder name | Image name `localhost/<slug>-orca`, default keyring entry names |
 | `repo_url` | — | HTTPS clone URL; `github.com` or a GitLab host |
 | `repo_ref` | `main` | Branch the image and new workspaces start from |
 | `project_root` | `/home/dev/<slug>` | Checkout path inside the container |
 | `dev_dockerfile` | `dev.Dockerfile` | Your Dockerfile, relative to the repo root |
 | `sync_command` | `uv sync` | Installs deps, e.g. `poetry install --with dev` |
-| `git_token_keychain_service` | `<slug>-orca-git-token` | Keychain entry with this repo's scoped token |
-| `claude_token_keychain_service` | `orca-claude-token` | Keychain entry with the Claude token, shared by all projects |
+| `git_token_keychain_service` | `<slug>-orca-git-token` | Keyring entry with this repo's scoped token |
+| `claude_token_keychain_service` | `orca-claude-token` | Keyring entry with the Claude token, shared by all projects |
 
 The copy creates the following files:
 
@@ -96,8 +96,8 @@ Then provision:
 
 | Script | What it does |
 |---|---|
-| `claude-token-setup.sh` | `claude setup-token` → Keychain (once per machine, ~1 year; `FORCE=1` to reissue) |
-| `git-token-setup.sh` | Prints where to create a repo-scoped token, verifies it with `git ls-remote`, saves it to the Keychain (`FORCE=1` to replace) |
+| `claude-token-setup.sh` | `claude setup-token` → keyring (once per machine, ~1 year; `FORCE=1` to reissue) |
+| `git-token-setup.sh` | Prints where to create a repo-scoped token, verifies it with a `git push --dry-run`, saves it to the keyring (`FORCE=1` to replace) |
 | `docker-base-image.sh` | Rebuilds the image; rerun after `dev.Dockerfile` or dependency changes |
 | `update.sh` | `copier update` to the latest template; pin with `--vcs-ref v1.2.0` |
 
@@ -119,9 +119,24 @@ includes:
   Issues, Workflows: read and write), or a project access token on GitLab. Never use the host's
   broad `gh auth token`: every agent in the container can read the token. Inside the container
   it is exported as `GH_TOKEN` or `GITLAB_TOKEN` (so `gh` or `glab` pick it up), and git uses it
-  only for the repo's host. `ORCA_GIT_TOKEN` in the environment overrides the Keychain.
+  only for the repo's host. `ORCA_GIT_TOKEN` in the environment overrides the keyring.
 - **Claude.** One long-lived token shared by all projects. `CLAUDE_CODE_OAUTH_TOKEN` in the
-  environment overrides the Keychain.
+  environment overrides the keyring.
+
+### Where tokens are stored
+
+The scripts choose the store for the host automatically. `ORCA_SECRET_STORE=keychain|secret-service|file`
+forces one.
+
+| Host | Store |
+|---|---|
+| macOS | Keychain (`security`) |
+| Linux desktop | Secret Service over D-Bus through `secret-tool` (package `libsecret-tools` / `libsecret`): GNOME Keyring, KWallet 5.97+, KeePassXC |
+| No keyring (headless, SSH session, no D-Bus) | `~/.config/orca-docker-vm/<entry>`, mode 0600, plain text |
+
+On hosts with no keyring, `ORCA_GIT_TOKEN` and `CLAUDE_CODE_OAUTH_TOKEN` in the environment also
+work: `docker-create.sh` reads them before any store. Orca must pass them to the recipe, for example
+from a secrets manager in your shell profile.
 
 Tokens exist only at runtime. `docker-create.sh` pipes them over `docker exec` stdin into the
 container's `/etc/environment`, so they stay out of the image, `docker inspect` and
@@ -169,7 +184,7 @@ and the project are the same repo. The image holds committed files only, and `cr
 
 - `ORCA_GIT_TOKEN` is the git token. It defaults to `gh auth token`, which is acceptable here
   because the test container is thrown away.
-- `CLAUDE_CODE_OAUTH_TOKEN` is the Claude token. It defaults to the Keychain entry named by
+- `CLAUDE_CODE_OAUTH_TOKEN` is the Claude token. It defaults to the host keyring entry named by
   `E2E_CLAUDE_KEYCHAIN`.
 
 The e2e test also greps the image config and `docker history` for both tokens.

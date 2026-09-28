@@ -38,4 +38,10 @@ echo '# v2' >> "$template/template/orca-docker-vm/infra.Dockerfile"; commit "$te
 grep -q '# v2' "$tmp/gh/orca-docker-vm/infra.Dockerfile" || fail "update did not apply template change"
 grep -q '# mine' "$tmp/gh/dev.Dockerfile" || fail "update clobbered dev.Dockerfile"
 
+# File store (hosts without a keyring): round-trips, and the token file is private.
+(export ORCA_SECRET_STORE=file XDG_CONFIG_HOME="$tmp/cfg"; source "$root/orca-docker-vm/lib.sh"
+ secret_set t-orca label comment 's3cr3t' 2>/dev/null && [ "$(secret_get t-orca)" = s3cr3t ] \
+   && [ "$(stat -c %a "$(secret_file t-orca)" 2>/dev/null || stat -f %Lp "$(secret_file t-orca)")" = 600 ]) \
+  || fail "file secret store"
+
 echo "render: ok"

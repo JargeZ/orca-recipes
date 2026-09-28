@@ -3,13 +3,14 @@
 # the image, creates a workspace container, checks what an Orca SSH session gets, then destroys it.
 # create fetches repo_ref from GitHub, so the branch must be pushed.
 # Env: ORCA_GIT_TOKEN (default: `gh auth token`, test-only) and CLAUDE_CODE_OAUTH_TOKEN
-#      (default: Keychain entry E2E_CLAUDE_KEYCHAIN, default orca-claude-token).
+#      (default: host keyring entry E2E_CLAUDE_KEYCHAIN, default orca-claude-token).
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 export ORCA_GIT_TOKEN="${ORCA_GIT_TOKEN:-$(gh auth token)}"
-export CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN:-$(security find-generic-password -s "${E2E_CLAUDE_KEYCHAIN:-orca-claude-token}" -w)}"
 s="$root/orca-docker-vm"
-source "$s/config.sh"
+source "$s/lib.sh"
+export CLAUDE_CODE_OAUTH_TOKEN="${CLAUDE_CODE_OAUTH_TOKEN:-$(secret_get "${E2E_CLAUDE_KEYCHAIN:-orca-claude-token}")}"
+[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || fail "no Claude token"
 
 result=""
 cleanup() {

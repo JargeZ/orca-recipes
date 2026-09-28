@@ -9,13 +9,13 @@ tasks:
       - '{{.TASKFILE_DIR}}/prepare.sh'
 
   claude-token:
-    desc: Store a long-lived Claude token in the macOS Keychain (no-op if present, FORCE=1 to reissue)
+    desc: Store a long-lived Claude token in the host keyring (no-op if present, FORCE=1 to reissue)
     interactive: true
     cmds:
       - '{{.TASKFILE_DIR}}/claude-token-setup.sh'
 
   git-token:
-    desc: Store a git token scoped to this repo in the macOS Keychain (no-op if present, FORCE=1 to replace)
+    desc: Store a git token scoped to this repo in the host keyring (no-op if present, FORCE=1 to replace)
     interactive: true
     cmds:
       - '{{.TASKFILE_DIR}}/git-token-setup.sh'

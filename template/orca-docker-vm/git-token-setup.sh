@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Hand-run once (and again when the token expires): stores a git token scoped to this repo only
-# in the macOS Keychain, where the docker-*.sh scripts read it.
+# in the host keyring (see secret_store in lib.sh), where the docker-*.sh scripts read it.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
-if [ -z "${FORCE:-}" ] && [ -n "$(keychain_value "$git_token_keychain_service")" ]; then
-  echo "Git token already in Keychain as '$git_token_keychain_service'; FORCE=1 to replace." >&2
+if [ -z "${FORCE:-}" ] && [ -n "$(secret_get "$git_token_keychain_service")" ]; then
+  echo "Git token already in $(secret_where "$git_token_keychain_service"); FORCE=1 to replace." >&2
   exit 0
 fi
 
@@ -40,9 +40,6 @@ if ! ORCA_GIT_TOKEN="$token" GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 g
 fi
 echo "Token can write to $repo_url." >&2
 
-# -l shows in the macOS access prompt; -D and -j in Keychain Access.
-security add-generic-password -U -s "$git_token_keychain_service" -a "$USER" \
-  -l "Orca: $project_slug git token for Docker workspaces" -D "Orca git token" \
-  -j "Access token scoped to $repo_url only. Written by orca-docker-vm/git-token-setup.sh; read by orca-docker-vm/docker-create.sh and passed into each $project_slug workspace container as $git_token_env for git and the $git_host CLI." \
-  -w "$token"
-echo "Saved to Keychain as '$git_token_keychain_service'."
+secret_set "$git_token_keychain_service" "Orca: $project_slug git token for Docker workspaces" \
+  "Access token scoped to $repo_url only. Written by orca-docker-vm/git-token-setup.sh; read by orca-docker-vm/docker-create.sh and passed into each $project_slug workspace container as $git_token_env for git and the $git_host CLI." \
+  "$token"

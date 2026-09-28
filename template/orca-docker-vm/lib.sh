@@ -4,12 +4,53 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=config.sh
 source "$here/config.sh"
 
-keychain_value() { security find-generic-password -s "$1" -w 2>/dev/null || true; }
+# Where tokens live, picked per host (ORCA_SECRET_STORE forces one):
+#   keychain        macOS Keychain (`security`)
+#   secret-service  Linux desktop keyring over D-Bus: GNOME Keyring, KWallet, KeePassXC (`secret-tool`)
+#   file            no keyring (headless/SSH host): a 0600 file under ~/.config/orca-docker-vm
+secret_store() {
+  if [ -n "${ORCA_SECRET_STORE:-}" ]; then echo "$ORCA_SECRET_STORE"
+  elif [ "$(uname)" = Darwin ]; then echo keychain
+  elif command -v secret-tool >/dev/null && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then echo secret-service
+  else echo file
+  fi
+}
+secret_file() { printf '%s/orca-docker-vm/%s' "${XDG_CONFIG_HOME:-$HOME/.config}" "$1"; }
 
-claude_token() { printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN:-$(keychain_value "$claude_token_keychain_service")}"; }
+secret_where() {  # secret_where <name>: human-readable location, for messages
+  case "$(secret_store)" in
+    keychain) echo "macOS Keychain as '$1'" ;;
+    secret-service) echo "the desktop keyring (secret-tool) as service '$1'" ;;
+    file) echo "file $(secret_file "$1")" ;;
+  esac
+}
+
+secret_get() {  # secret_get <name>: prints the token, or nothing
+  case "$(secret_store)" in
+    keychain) security find-generic-password -s "$1" -w 2>/dev/null ;;
+    secret-service) secret-tool lookup service "$1" 2>/dev/null ;;
+    file) cat "$(secret_file "$1")" 2>/dev/null ;;
+    *) echo "Unknown ORCA_SECRET_STORE '$ORCA_SECRET_STORE'" >&2; return 1 ;;
+  esac || true
+}
+
+secret_set() {  # secret_set <name> <label> <comment> <token>
+  case "$(secret_store)" in
+    # -l shows in the macOS access prompt; -j in Keychain Access.
+    keychain) security add-generic-password -U -s "$1" -a "$USER" -l "$2" -D "Orca token" -j "$3" -w "$4" ;;
+    secret-service) printf '%s' "$4" | secret-tool store --label="$2" service "$1" account "$USER" ;;
+    file)
+      (umask 077 && mkdir -p "$(dirname "$(secret_file "$1")")" && printf '%s' "$4" > "$(secret_file "$1")")
+      echo "No keyring on this host: the token is stored in plain text, readable only by $USER." >&2 ;;
+    *) echo "Unknown ORCA_SECRET_STORE '$ORCA_SECRET_STORE'" >&2; return 1 ;;
+  esac
+  echo "Saved to $(secret_where "$1")." >&2
+}
+
+claude_token() { printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN:-$(secret_get "$claude_token_keychain_service")}"; }
 
 # Token scoped to this repo only; never the host's broad `gh auth token`.
-git_token() { printf '%s' "${ORCA_GIT_TOKEN:-$(keychain_value "$git_token_keychain_service")}"; }
+git_token() { printf '%s' "${ORCA_GIT_TOKEN:-$(secret_get "$git_token_keychain_service")}"; }
 
 require_git_token() {
   token="$(git_token)"
