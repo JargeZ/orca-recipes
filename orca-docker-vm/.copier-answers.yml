@@ -1,0 +1,11 @@
+# Changes here will be overwritten by Copier; rerun `task orca:update` instead of editing.
+_commit: cfd1594
+_src_path: .
+claude_token_keychain_service: orca-claude-token
+dev_dockerfile: dev.Dockerfile
+git_token_keychain_service: orca-recipes-orca-git-token
+project_root: /home/dev/orca-recipes
+project_slug: orca-recipes
+repo_ref: main
+repo_url: https://github.com/JargeZ/orca-recipes.git
+sync_command: uvx copier --version && uvx --from shellcheck-py shellcheck --version

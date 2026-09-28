@@ -1,6 +1,6 @@
 # shellcheck shell=bash disable=SC2034
 {% macro q(v) %}'{{ v | replace("'", "'\\''") }}'{% endmacro -%}
-# Rendered by copier from scripts/orca-vm/.copier-answers.yml; edit answers via `task orca:update`.
+# Rendered by copier from orca-docker-vm/.copier-answers.yml; edit answers via `task orca:update`.
 project_slug={{ q(project_slug) }}
 image="localhost/${project_slug}-orca"
 repo_url={{ q(repo_url) }}

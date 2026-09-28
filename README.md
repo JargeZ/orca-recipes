@@ -68,9 +68,9 @@ Copier asks the following questions:
 
 The copy creates the following files:
 
-- `scripts/orca-vm/`: the recipe. It is template-owned, so change it through the template, not
+- `orca-docker-vm/`: the recipe. It is template-owned, so change it through the template, not
   locally.
-- `scripts/orca-vm/.copier-answers.yml`: your answers and the template version.
+- `orca-docker-vm/.copier-answers.yml`: your answers and the template version.
 - `dev.Dockerfile` and `orca.yaml`: created only if they are missing, and never touched by updates.
   If `orca.yaml` already existed, add this recipe to it:
 
@@ -78,15 +78,15 @@ The copy creates the following files:
   environmentRecipes:
     - id: docker
       name: Local Docker
-      create: ./scripts/orca-vm/docker-create.sh
-      destroy: ./scripts/orca-vm/docker-destroy.sh
+      create: ./orca-docker-vm/docker-create.sh
+      destroy: ./orca-docker-vm/docker-destroy.sh
   ```
 
 Include the recipe tasks in the project's `Taskfile.yaml`:
 
 ```yaml
 includes:
-  orca: ./scripts/orca-vm/Taskfile.yaml
+  orca: ./orca-docker-vm/Taskfile.yaml
 ```
 
 Then provision:
@@ -124,7 +124,7 @@ task orca:update                         # latest tag
 task orca:update -- --vcs-ref v1.2.0     # specific version
 ```
 
-Copier re-renders `scripts/orca-vm/` and three-way merges it with your local changes. It leaves
+Copier re-renders `orca-docker-vm/` and three-way merges it with your local changes. It leaves
 `dev.Dockerfile` and `orca.yaml` alone. After an update that touches `infra.Dockerfile`, run
 `task orca:base-image`.
 

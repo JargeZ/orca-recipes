@@ -1,6 +1,6 @@
 # Orca infra layered on top of the project's dev image (built from the project's dev.Dockerfile):
 # sshd + the `dev` user Orca logs in as, Node for Orca's SSH relay, git/gh, task, and Claude Code.
-# The repo checkout + deps are added on top of this by docker-base-image.sh.
+# Last, the repo checkout (the `repo` build context from docker-base-image.sh) and its deps.
 ARG DEV_IMAGE
 FROM ${DEV_IMAGE}
 ARG GIT_HOST
@@ -49,3 +49,11 @@ RUN env | grep -vE '^(HOSTNAME|HOME|PWD|SHLVL|TERM|USER|GIT_HOST|_)=' | sort > /
 COPY docker-entrypoint.sh /usr/local/bin/orca-docker-ssh-entrypoint
 ENTRYPOINT ["/usr/local/bin/orca-docker-ssh-entrypoint"]
 CMD []
+
+# Declared here, not at the top: changing them must not rebuild the infra layers above.
+ARG REPO_URL PROJECT_ROOT SYNC_COMMAND
+COPY --from=repo --chown=dev:dev . ${PROJECT_ROOT}
+USER dev
+WORKDIR ${PROJECT_ROOT}
+RUN git remote set-url origin "$REPO_URL" && bash -lc "$SYNC_COMMAND"
+USER root

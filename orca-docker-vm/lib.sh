@@ -13,13 +13,13 @@ git_token() { printf '%s' "${ORCA_GIT_TOKEN:-$(keychain_value "$git_token_keycha
 
 require_git_token() {
   token="$(git_token)"
-  [ -n "$token" ] || { echo "No git token: run scripts/orca-vm/git-token-setup.sh (or set ORCA_GIT_TOKEN)" >&2; exit 1; }
+  [ -n "$token" ] || { echo "No git token: run orca-docker-vm/git-token-setup.sh (or set ORCA_GIT_TOKEN)" >&2; exit 1; }
   export "$git_token_env=$token"
 }
 
-# Script for `bash -s` inside the container as `dev`: git authenticates through the image's credential
-# helper, then the project's sync command installs deps. Values travel in the script, not `docker -e`:
-# `docker commit` would bake -e vars (the token included) into the image config.
+# Script for `docker exec bash -s` inside a workspace container as `dev`: fetches repo_ref through the
+# image's credential helper, then reruns the project's sync command. The token travels over stdin,
+# so it stays out of `docker inspect`.
 sync_script() {
   local v
   for v in "$git_token_env" repo_url repo_ref project_root sync_command; do printf 'export %s=%q\n' "$v" "${!v}"; done
@@ -29,9 +29,6 @@ sync_script() {
 # shellcheck disable=SC2016
 remote_sync_script='set -euo pipefail
 export GIT_TERMINAL_PROMPT=0
-if [ ! -d "$project_root/.git" ]; then
-  git clone --branch "$repo_ref" "$repo_url" "$project_root"
-fi
 cd "$project_root"
 git fetch origin "$repo_ref"
 git checkout -B "$repo_ref" FETCH_HEAD

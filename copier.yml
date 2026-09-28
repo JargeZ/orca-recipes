@@ -1,17 +1,17 @@
 _min_copier_version: "9.4"
 _subdirectory: template
-_answers_file: scripts/orca-vm/.copier-answers.yml
+_answers_file: orca-docker-vm/.copier-answers.yml
 # Project-owned after the first copy: updates never touch them.
 _skip_if_exists:
   - orca.yaml
   - dev.Dockerfile
 _message_after_copy: |
-  Orca Docker recipe rendered into scripts/orca-vm/.
+  Orca Docker recipe rendered into orca-docker-vm/.
   Next:
     1. Review {{ dev_dockerfile }} (your deps; must be Debian/Ubuntu-based).
     2. Add to your Taskfile.yaml:
          includes:
-           orca: ./scripts/orca-vm/Taskfile.yaml
+           orca: ./orca-docker-vm/Taskfile.yaml
     3. If orca.yaml already existed, add the `docker` recipe from the README.
     4. task orca:setup
 

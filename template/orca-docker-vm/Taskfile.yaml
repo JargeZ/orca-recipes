@@ -1,0 +1,39 @@
+# Included from the project's Taskfile as `orca:` (see the orca-recipes README).
+version: '3'
+
+tasks:
+  setup:
+    desc: Provision everything the "Local Docker" Orca recipe needs (idempotent)
+    cmds:
+      - task: claude-token
+      - task: git-token
+      - task: base-image
+      - task: check
+
+  claude-token:
+    desc: Store a long-lived Claude token in the macOS Keychain (no-op if present, FORCE=1 to reissue)
+    interactive: true
+    cmds:
+      - '{{.TASKFILE_DIR}}/claude-token-setup.sh'
+
+  git-token:
+    desc: Store a git token scoped to this repo in the macOS Keychain (no-op if present, FORCE=1 to replace)
+    interactive: true
+    cmds:
+      - '{{.TASKFILE_DIR}}/git-token-setup.sh'
+
+  base-image:
+    desc: Build the base Docker image (dev.Dockerfile + infra + repo + deps); rerun after either Dockerfile or deps change
+    cmds:
+      - '{{.TASKFILE_DIR}}/docker-base-image.sh'
+
+  check:
+    desc: End-to-end self-test of the docker recipe (create + destroy)
+    cmds:
+      - orca vm recipe doctor docker --repo-path "{{.ROOT_DIR}}" --provision --json | jq -e '.ok' >/dev/null
+
+  update:
+    desc: Pull the latest recipe template (copier 3-way merge); extra args after --, e.g. `-- --vcs-ref v1.2.0`
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - uvx copier update -a orca-docker-vm/.copier-answers.yml {{.CLI_ARGS}}

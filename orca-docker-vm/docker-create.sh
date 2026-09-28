@@ -8,7 +8,7 @@ source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
 docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run 'task orca:base-image'" >&2; exit 1; }
 CLAUDE_CODE_OAUTH_TOKEN="$(claude_token)"
-[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "No Claude token: run scripts/orca-vm/claude-token-setup.sh" >&2; exit 1; }
+[ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "No Claude token: run orca-docker-vm/claude-token-setup.sh" >&2; exit 1; }
 require_git_token
 
 key="$here/.ssh/id_ed25519"

@@ -36,4 +36,4 @@ tasks:
     desc: Pull the latest recipe template (copier 3-way merge); extra args after --, e.g. `-- --vcs-ref v1.2.0`
     dir: '{{.ROOT_DIR}}'
     cmds:
-      - uvx copier update -a scripts/orca-vm/.copier-answers.yml {{.CLI_ARGS}}
+      - uvx copier update -a orca-docker-vm/.copier-answers.yml {{.CLI_ARGS}}

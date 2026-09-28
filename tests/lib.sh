@@ -6,7 +6,8 @@ commit() { git -C "$1" -c user.name=t -c user.email=t@t commit -qam "$2"; }
 export PYTHONWARNINGS=ignore::UserWarning
 tmp="$(mktemp -d)"
 template="$tmp/template"
-rsync -a --exclude .git "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/" "$template/"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+rsync -a --exclude .git --exclude .ssh "$root/" "$template/"
 git -C "$template" init -q && git -C "$template" add -A && commit "$template" snapshot
 
 render() {  # render <dest> [copier --data args...]
