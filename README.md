@@ -13,10 +13,14 @@ infrastructure and keeps it updatable with `copier update`.
 ```
 dev.Dockerfile           project-owned: base image, system packages, language toolchain, ENV
   └─ infra.Dockerfile    template: sshd, `dev` user (uid 1000), Node for Orca's SSH relay,
-     │                   gh, task, Claude Code, git credential helper, ENV → SSH sessions
-     └─ docker commit    repo cloned to project_root + sync command run as `dev`
+                         gh, task, Claude Code, git credential helper, ENV → SSH sessions,
+                         then the repo at project_root + sync command run as `dev`
           = localhost/<project_slug>-orca    (what every workspace boots from)
 ```
+
+The checkout in the image is a clone of your **local** repo at `repo_ref` (committed files only),
+passed to `docker build` as a named build context. So building needs no token, and no secret ever
+enters a build step, a layer or the image config.
 
 On each workspace, `docker-create.sh` does the following:
 
@@ -113,6 +117,11 @@ task orca:setup          # Claude token → git token → base image → end-to-
 - **Claude.** One long-lived token shared by all projects. `CLAUDE_CODE_OAUTH_TOKEN` in the
   environment overrides the Keychain.
 
+Tokens exist only at runtime. `docker-create.sh` pipes them over `docker exec` stdin into the
+container's `/etc/environment`, so they stay out of the image, `docker inspect` and
+`docker history`. Plain `docker run` has no runtime secret mounts (`--secret` is Swarm-only), and
+`-e` shows up in `docker inspect`.
+
 `glab` is not in the infra layer. GitLab projects that want it can install it in `dev.Dockerfile`.
 
 ## Updating the template
@@ -130,25 +139,31 @@ Copier re-renders `orca-docker-vm/` and three-way merges it with your local chan
 
 ## Developing this template
 
+This repo uses its own template: `orca-docker-vm/`, `dev.Dockerfile` and `orca.yaml` at the root
+are rendered from `template/`, and the root `Taskfile.yaml` includes `orca:` like any project.
+
 ```
 copier.yml       questions, derived values, project-owned files
-template/        rendered into the project (`.jinja` files are templated, the rest copied verbatim)
+template/        rendered into projects (`.jinja` files are templated, the rest copied verbatim)
+orca-docker-vm/  this repo's own render of template/ - don't edit, run `task render`
+dev.Dockerfile   this repo's dev image: uv (copier, shellcheck), jq, rsync
 tests/           render.sh (fast, offline), e2e.sh (Docker, network)
 ```
 
 ```bash
-task test        # render for GitHub and GitLab, shellcheck, orca doctor, answer quoting,
-                 # and an update applying a template change without touching dev.Dockerfile
-task test:e2e    # build the image against a real repo, create, check the SSH session, destroy
+task render      # copier recopy from the working tree, uncommitted template changes included
+task test        # render, then: this repo's recipe + fresh GitHub/GitLab renders get shellcheck,
+                 # orca doctor, answer quoting, and an update keeping dev.Dockerfile edits
+task test:e2e    # render, then this repo's recipe for real: build, create, SSH checks, destroy
 ```
 
-`tests/e2e.sh` defaults to a uv project and reads these environment variables:
+`task render` uses `copier recopy`, not `update`: update refuses a dirty repo, and here the template
+and the project are the same repo. The image holds committed files only, and `create` fetches
+`repo_ref` from GitHub, so the e2e test needs the branch pushed. It reads:
 
-- `E2E_REPO_URL`, `E2E_REPO_REF` and `E2E_SYNC` choose the repo, branch and sync command.
 - `ORCA_GIT_TOKEN` is the git token. It defaults to `gh auth token`, which is acceptable here
   because the test container is thrown away.
 - `CLAUDE_CODE_OAUTH_TOKEN` is the Claude token. It defaults to the Keychain entry named by
   `E2E_CLAUDE_KEYCHAIN`.
 
-The e2e test also asserts that no token ends up in the image config. `docker commit` records
-`docker run -e` variables, which is why the sync script receives its values over stdin.
+The e2e test also greps the image config and `docker history` for both tokens.

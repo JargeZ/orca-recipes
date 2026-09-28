@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier; rerun `task orca:update` instead of editing.
-_commit: cfd1594
+_commit: 0a9498a
 _src_path: .
 claude_token_keychain_service: orca-claude-token
 dev_dockerfile: dev.Dockerfile

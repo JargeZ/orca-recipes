@@ -1,3 +1,4 @@
+# check=skip=InvalidDefaultArgInFrom
 # Orca infra layered on top of the project's dev image (built from the project's dev.Dockerfile):
 # sshd + the `dev` user Orca logs in as, Node for Orca's SSH relay, git/gh, task, and Claude Code.
 # Last, the repo checkout (the `repo` build context from docker-base-image.sh) and its deps.
