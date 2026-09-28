@@ -1,4 +1,7 @@
-# orca-recipes
+# orca-recipes: reference for agents and contributors
+
+The detailed reference: how the recipe works, every script, token handling and how to develop the
+template. The user-facing overview is in [README.md](README.md).
 
 A [copier](https://copier.readthedocs.io/) template for Orca
 per-workspace environments. Each Orca workspace gets a fresh local Docker container that Orca
