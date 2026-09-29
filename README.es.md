@@ -110,3 +110,7 @@ task test:e2e    # ejecución completa en Docker: build, create, comprobaciones 
 ## 🤝 Contribuir
 
 ¡Los pull requests que hagan el proyecto **más universal** (nuevos agentes, imágenes base, hosts de git) son muy bienvenidos!
+
+## 📄 Licencia
+
+[MIT](LICENSE): úsalo como quieras, conservando el aviso de copyright.

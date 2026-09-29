@@ -105,3 +105,7 @@ task test:e2e    # 在 Docker 中完整运行:构建、create、SSH 检查、des
 ## 🤝 参与贡献
 
 非常欢迎让项目 **更通用** 的 Pull Request(新的智能体、基础镜像、Git 托管平台)!
+
+## 📄 许可证
+
+[MIT](LICENSE):保留版权声明即可自由使用。

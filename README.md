@@ -110,3 +110,7 @@ task test:e2e    # full Docker run: build, create, SSH checks, destroy
 ## 🤝 Contributing
 
 Pull requests that make it **more universal** (new agents, base images, git hosts) are very welcome!
+
+## 📄 License
+
+[MIT](LICENSE): use it any way you like, keeping the copyright notice.

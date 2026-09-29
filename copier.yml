@@ -12,6 +12,9 @@ _message_after_copy: |
     2. If orca.yaml already existed, add the `docker` recipe from the README.
     3. ./orca-docker-vm/prepare.sh
 
+  orca-recipes is MIT licensed: free to use, keep the credit to github.com/JargeZ/orca-recipes.
+  Useful? Star the repo and follow https://github.com/JargeZ ⭐
+
 project_slug:
   type: str
   help: Short project name, used for image and keyring entry names
