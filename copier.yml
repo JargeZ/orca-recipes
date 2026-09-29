@@ -23,8 +23,8 @@ project_slug:
 
 repo_url:
   type: str
-  help: HTTPS clone URL of this repo (github.com or gitlab.com)
-  validator: "{% if not repo_url.startswith('https://') %}must be an https:// URL{% endif %}"
+  help: HTTPS clone URL of this repo (github.com or a GitLab host), e.g. https://github.com/acme/widgets.git
+  validator: "{% if not (repo_url | regex_search('^https://[^/@ ]+/[^ ]+/[^/ ]+\\.git$')) %}must look like https://github.com/acme/widgets.git (https, no user@, ends in .git){% endif %}"
 
 repo_ref:
   type: str
