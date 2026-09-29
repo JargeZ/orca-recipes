@@ -121,7 +121,8 @@ includes:
 ### Tokens
 
 - **Git.** Use a token scoped to one repo: a fine-grained PAT on GitHub (Contents, Pull requests,
-  Issues, Workflows: read and write), or a project access token on GitLab. Never use the host's
+  Issues, Workflows: read and write); on GitLab a project access token (gitlab.com: Premium+) or a
+  fine-grained personal access token limited to the project. Never use the host's
   broad `gh auth token`: every agent in the container can read the token. Inside the container
   it is exported as `GH_TOKEN` or `GITLAB_TOKEN` (so `gh` or `glab` pick it up), and git uses it
   only for the repo's host. `ORCA_GIT_TOKEN` in the environment overrides the keyring.

@@ -19,9 +19,21 @@ Repository access: Only select repositories -> $repo
 Permissions: Contents, Pull requests, Issues, Workflows = Read and write (Metadata read is implied).
 MSG
   ;;
+  # Neither GitLab form takes prefill query params (unlike the legacy PAT form), so print the values.
   *) cat >&2 <<MSG
-Create a project access token (role Developer, scopes api + write_repository):
+Create one token limited to $repo. Either kind works, fill in:
+  Name:        orca-${repo##*/}
+  Description: Orca Docker workspaces for $repo
+  Expiration:  90 days
+
+A) Project access token (gitlab.com: Premium/Ultimate only; self-managed: any tier):
   https://$git_host/$repo/-/settings/access_tokens
+  Role: Developer. Scopes: api, write_repository.
+
+B) Fine-grained personal access token (any tier; GitLab 18.10+):
+  https://$git_host/-/user_settings/personal_access_tokens/granular/new
+  Group and project access: only the project $repo.
+  Permissions: Code = Download + Push; for glab also Merge request, Issue, Pipeline = read + write.
 MSG
   ;;
 esac
