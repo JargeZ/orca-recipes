@@ -56,6 +56,7 @@ uvx copier copy gh:JargeZ/orca-recipes .
 > environmentRecipes:
 >   - id: docker
 >     name: Local Docker
+>     checkoutMode: provisioned-root
 >     create: ./orca-docker-vm/docker-create.sh
 >     destroy: ./orca-docker-vm/docker-destroy.sh
 > ```

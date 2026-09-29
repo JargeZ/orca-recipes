@@ -61,12 +61,15 @@ require_git_token() {
   export "$git_token_env=$token"
 }
 
-# Script for `docker exec bash -s` inside a workspace container as `dev`: fetches repo_ref through the
-# image's credential helper, then reruns the project's sync command. The token travels over stdin,
-# so it stays out of `docker inspect`.
+# Script for `docker exec bash -s` inside a workspace container as `dev`: checks out the workspace
+# branch through the image's credential helper, then reruns the project's sync command. The token
+# travels over stdin, so it stays out of `docker inspect`.
+# provisioned-root (see docker-create.sh): Orca passes the workspace branch and the exact commit to
+# start it at; without them (orca doctor, e2e) the checkout is repo_ref.
 sync_script() {
   local v
   for v in "$git_token_env" repo_url repo_ref project_root sync_command; do printf 'export %s=%q\n' "$v" "${!v}"; done
+  printf 'export ref_head=%q branch=%q\n' "${ORCA_REPO_REF_HEAD:-}" "${ORCA_REPO_BRANCH:-$repo_ref}"
   printf '%s' "$remote_sync_script"
 }
 
@@ -74,7 +77,14 @@ sync_script() {
 remote_sync_script='set -euo pipefail
 export GIT_TERMINAL_PROMPT=0
 cd "$project_root"
-git fetch origin "$repo_ref"
-git checkout -B "$repo_ref" FETCH_HEAD
+if [ -n "$ref_head" ]; then
+  # The pinned commit, not the ref: re-resolving the ref could race an upstream push.
+  git fetch origin "$ref_head" 2>/dev/null || git fetch origin
+  git cat-file -e "$ref_head^{commit}"
+  git checkout -B "$branch" "$ref_head"
+else
+  git fetch origin "$repo_ref"
+  git checkout -B "$branch" FETCH_HEAD
+fi
 bash -lc "$sync_command"
 '

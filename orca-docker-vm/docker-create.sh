@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Orca `create`: boots a container from the base image with the shared Claude login volume, hands it
-# the git token, syncs the repo to repo_ref, reruns the sync command (the lock may have moved since
-# the image), and prints the SSH recipe result.
+# the git token, checks out the workspace branch, reruns the sync command (the lock may have moved
+# since the image), and prints the SSH recipe result.
+# With `checkoutMode: provisioned-root` in orca.yaml (schema 2) that checkout is the workspace itself:
+# one container per workspace, one entry in Orca. Schema 1 (older orca.yaml) keeps Orca's default of
+# a linked worktree next to a repo_ref checkout.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
@@ -10,6 +13,9 @@ docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run or
 # Checked first: `docker run -v` would silently create an empty, logged-out volume.
 docker volume inspect "$claude_volume" >/dev/null 2>&1 || { echo "No Claude login volume '$claude_volume': run orca-docker-vm/prepare.sh" >&2; exit 1; }
 require_git_token
+schema="${ORCA_RECIPE_RESULT_SCHEMA_VERSION:-1}"
+case "$schema" in 1|2) ;; *) echo "Unsupported ORCA_RECIPE_RESULT_SCHEMA_VERSION=$schema" >&2; exit 1 ;; esac
+[ "$schema" = 2 ] || unset ORCA_REPO_REF_HEAD ORCA_REPO_BRANCH
 
 key="$here/.ssh/id_ed25519"
 if [ ! -f "$key" ]; then
@@ -45,7 +51,7 @@ for k in user.name user.email; do
 done
 
 docker exec -i -u dev "$name" bash -s <<<"$(sync_script)" >&2 \
-  || { echo "Syncing '$repo_ref' from $repo_url failed: is '$repo_ref' pushed there?" >&2; exit 1; }
+  || { echo "Checking out ${ORCA_REPO_BRANCH:-$repo_ref} from $repo_url failed: is it pushed there?" >&2; exit 1; }
 
 # Checks what an Orca session actually gets: SSH login env, Claude auth, git auth.
 ssh_opts=(-i "$key" -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes)
@@ -58,13 +64,14 @@ ssh "${ssh_opts[@]}" dev@127.0.0.1 'claude --version && claude auth status >/dev
 # shellcheck disable=SC2029  # project_root expands locally on purpose
 ssh "${ssh_opts[@]}" dev@127.0.0.1 "cd '$project_root' && git ls-remote --exit-code origin HEAD >/dev/null" >&2
 
-jq -n --arg name "$name" --argjson port "$port" --arg key "$key" --arg root "$project_root" --arg hk "$host_key" '{
-  schemaVersion: 1,
+jq -n --argjson schema "$schema" --arg name "$name" --argjson port "$port" --arg key "$key" --arg root "$project_root" --arg hk "$host_key" '{
+  schemaVersion: $schema,
+  checkoutMode: "provisioned-root",
   connection: {
     type: "ssh",
     projectRoot: $root,
     target: { label: $name, host: "127.0.0.1", port: $port, username: "dev", identityFile: $key, identitiesOnly: true }
   },
   userData: { provider: "docker", resourceId: $name, hostKey: $hk }
-}'
+} | if $schema == 1 then del(.checkoutMode) else . end'
 ok=1
