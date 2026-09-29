@@ -63,5 +63,6 @@ git_host:
 
 git_token_env:
   type: str
-  default: "{{ 'GITLAB_TOKEN' if 'gitlab' in repo_url else 'GH_TOKEN' }}"
+  # Only github.com is GitHub; any other host is GitLab (gitlab.com or self-managed).
+  default: "{{ 'GH_TOKEN' if repo_url.split('/')[2] == 'github.com' else 'GITLAB_TOKEN' }}"
   when: false

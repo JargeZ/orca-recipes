@@ -26,6 +26,8 @@ done
 (source "$tmp/gl/orca-docker-vm/config.sh"
  [ "$git_host/$git_token_env" = gitlab.com/GITLAB_TOKEN ] && [ "$sync_command" = "poetry install --with dev" ] \
    && [ "$project_root" = /home/dev/gadgets ]) || fail "gitlab derivation"
+render "$tmp/sm" -d repo_url=https://git.example.com/acme/gizmos.git -d project_slug=gizmos
+(source "$tmp/sm/orca-docker-vm/config.sh"; [ "$git_host/$git_token_env" = git.example.com/GITLAB_TOKEN ]) || fail "self-managed gitlab derivation"
 
 # Shell-special characters in answers survive config.sh quoting.
 render "$tmp/q" -d repo_url=https://github.com/acme/q.git -d project_slug=q -d "sync_command=echo 'it'\''s' \$HOME"

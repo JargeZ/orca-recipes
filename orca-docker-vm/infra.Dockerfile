@@ -20,6 +20,12 @@ RUN apt-get update \
     && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update && apt-get install -y --no-install-recommends gh \
+    # glab for GitLab repos, from upstream releases (distro packages lag or are missing).
+    && if [ "$GIT_HOST" != github.com ]; then \
+        v="$(curl -fsSL https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases/permalink/latest | sed -E 's/.*"tag_name":"v([^"]+)".*/\1/')" \
+        && curl -fsSL -o /tmp/glab.deb "https://gitlab.com/gitlab-org/cli/-/releases/v$v/downloads/glab_${v}_linux_$(dpkg --print-architecture).deb" \
+        && apt-get install -y --no-install-recommends /tmp/glab.deb && rm /tmp/glab.deb; \
+    fi \
     && rm -rf /var/lib/apt/lists/* \
     && sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin \
     # uid 1000 is taken in some bases (ubuntu:24.04 ships `ubuntu`); dev.Dockerfiles chown to 1000.

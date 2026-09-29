@@ -65,7 +65,7 @@ Copier asks the following questions:
 | Question | Default | Meaning |
 |---|---|---|
 | `project_slug` | folder name | Image name `localhost/<slug>-orca`, default keyring entry names |
-| `repo_url` | — | HTTPS clone URL; `github.com` or a GitLab host |
+| `repo_url` | — | HTTPS clone URL; `github.com`, or any other host = GitLab (gitlab.com or self-managed) |
 | `repo_ref` | `main` | Branch the image and new workspaces start from |
 | `project_root` | `/home/dev/<slug>` | Checkout path inside the container |
 | `dev_dockerfile` | `dev.Dockerfile` | Your Dockerfile, relative to the repo root |
@@ -154,7 +154,9 @@ container's `/etc/environment`, so it stays out of the image, `docker inspect` a
 `docker history`. Plain `docker run` has no runtime secret mounts (`--secret` is Swarm-only), and
 `-e` shows up in `docker inspect`.
 
-`glab` is not in the infra layer. GitLab projects that want it can install it in `dev.Dockerfile`.
+Any host other than `github.com` is treated as GitLab (gitlab.com or self-managed): the infra layer
+also installs `glab`, and `docker-create.sh` sets `GITLAB_HOST` so `glab`
+talks to the repo's host.
 
 ## Updating the template
 

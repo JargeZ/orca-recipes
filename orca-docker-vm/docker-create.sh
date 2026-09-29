@@ -44,7 +44,10 @@ ssh-keygen -R "[127.0.0.1]:$port" -f "$known_hosts" >/dev/null 2>&1 || true
 echo "[127.0.0.1]:$port $host_key" >> "$known_hosts"
 
 # The git token lives only in this container (never in the image): pam_env exports it to every SSH session.
-docker exec -i "$name" sh -c 'cat >> /etc/environment' <<<"$git_token_env=$(git_token)"
+# glab defaults to gitlab.com; GITLAB_HOST points it at the repo's host.
+env_lines="$git_token_env=$(git_token)"
+[ "$git_token_env" != GITLAB_TOKEN ] || env_lines+=$'\n'"GITLAB_HOST=https://$git_host"
+docker exec -i "$name" sh -c 'cat >> /etc/environment' <<<"$env_lines"
 for k in user.name user.email; do
   v="$(git config --global "$k" || true)"
   [ -z "$v" ] || docker exec -u dev "$name" git config --global "$k" "$v"
