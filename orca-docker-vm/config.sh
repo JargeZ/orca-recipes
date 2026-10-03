@@ -13,3 +13,5 @@ git_token_env='GH_TOKEN'
 git_token_keychain_service='orca-recipes-orca-git-token'
 # Docker volume with the Claude Code login, shared by all projects.
 claude_volume='orca-claude'
+# Docker volume with the Cursor Agent login, shared by all projects.
+cursor_volume='orca-cursor'

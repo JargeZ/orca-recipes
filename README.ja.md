@@ -36,7 +36,7 @@
 | エージェント | ステータス |
 |---|---|
 | Claude Code | ✅ 対応 |
-| cursor-agent | 🚧 近日対応 |
+| cursor-agent | ✅ 対応 |
 | opencode | 🚧 近日対応 |
 | …その他 | 💡 [PR 歓迎](https://github.com/JargeZ/orca-recipes/pulls) |
 
@@ -73,7 +73,7 @@ uvx copier copy gh:JargeZ/orca-recipes .
 ./orca-docker-vm/prepare.sh
 ```
 
-Git トークンの設定、ベースイメージのビルド、Claude へのログイン、セルフテストを行います。
+Git トークンの設定、ベースイメージのビルド、Claude と Cursor Agent へのログイン、セルフテストを行います。
 すべて緑になったら、Orca の UI で新しいワークスペースを作成し、起動することを確認してください。
 
 うまくいかない場合は、エージェントに修正を依頼してください。レンダリング後、レシピのコードはすべて

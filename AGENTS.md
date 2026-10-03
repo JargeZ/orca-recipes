@@ -5,8 +5,8 @@ template. The user-facing overview is in [README.md](README.md).
 
 A [copier](https://copier.readthedocs.io/) template for Orca
 per-workspace environments. Each Orca workspace gets a fresh local Docker container that Orca
-reaches over SSH, with the repo checked out, deps installed, and Claude Code, `git` and `gh`
-already authenticated.
+reaches over SSH, with the repo checked out, deps installed, and Claude Code, Cursor Agent, `git`
+and `gh` already authenticated.
 
 Each project describes only its own toolchain in `dev.Dockerfile`. The template adds the shared
 infrastructure and keeps it updatable with `copier update`.
@@ -16,8 +16,8 @@ infrastructure and keeps it updatable with `copier update`.
 ```
 dev.Dockerfile           project-owned: base image, system packages, language toolchain, ENV
   └─ infra.Dockerfile    template: sshd, `dev` user (uid 1000), Node for Orca's SSH relay,
-                         gh, task, Claude Code, git credential helper, ENV → SSH sessions,
-                         then the repo at project_root + sync command run as `dev`
+                         gh, task, Claude Code, Cursor Agent, git credential helper,
+                         ENV → SSH sessions, then the repo at project_root + sync as `dev`
           = localhost/<project_slug>-orca    (what every workspace boots from)
 ```
 
@@ -27,12 +27,13 @@ enters a build step, a layer or the image config.
 
 On each workspace, `docker-create.sh` does the following:
 
-1. Boots a container from that image, with the shared Claude login volume mounted.
+1. Boots a container from that image, with the shared Claude and Cursor login volumes mounted.
 2. Writes the git token into the container's `/etc/environment`. The token is never stored in
    the image.
 3. Copies your host `git config user.name` and `user.email` into the container.
 4. Fetches `repo_ref` and runs the sync command again, in case the lock file moved.
-5. Checks over SSH what an Orca session will get: `claude auth status` and `git ls-remote`.
+5. Checks over SSH what an Orca session will get: `claude auth status`, `agent status`, and
+   `git ls-remote`.
 
 `docker-destroy.sh` removes the container and its `known_hosts` entry.
 
@@ -72,6 +73,7 @@ Copier asks the following questions:
 | `sync_command` | `uv sync` | Installs deps, e.g. `poetry install --with dev` |
 | `git_token_keychain_service` | `<slug>-orca-git-token` | Keyring entry with this repo's scoped token |
 | `claude_volume` | `orca-claude` | Docker volume with the Claude Code login, shared by all projects |
+| `cursor_volume` | `orca-cursor` | Docker volume with the Cursor Agent login, shared by all projects |
 
 The copy creates the following files:
 
@@ -92,18 +94,19 @@ The copy creates the following files:
 Then provision:
 
 ```bash
-./orca-docker-vm/prepare.sh      # git token → base image → Claude login → end-to-end self-test
+./orca-docker-vm/prepare.sh      # git token → base image → Claude/Cursor login → end-to-end self-test
 ```
 
 `prepare.sh` runs the individual scripts in order and says what each step does. Every step checks
 first and only asks for input when something is missing or broken, so if anything breaks later (an
-expired token, a logged-out Claude), rerunning `prepare.sh` fixes it.
+expired token, a logged-out agent), rerunning `prepare.sh` fixes it.
 
 | Script | What it does |
 |---|---|
 | `git-token-setup.sh` | Prints where to create a repo-scoped token, verifies it with a `git push --dry-run`, saves it to the keyring (`FORCE=1` to replace) |
 | `docker-base-image.sh` | Rebuilds the image; rerun after `dev.Dockerfile` or dependency changes |
 | `claude-login.sh` | Checks the Claude login with a one-line request; if it fails, runs `claude auth login` in a container (`FORCE=1` to redo) |
+| `cursor-login.sh` | Checks Cursor Agent auth status; if it fails, runs `agent login` in a container (`FORCE=1` to redo) |
 | `update.sh` | `copier update` to the latest template; pin with `--vcs-ref v1.2.0` |
 
 The last step of `prepare.sh` is `orca vm recipe doctor docker --provision`: a real create + destroy.
@@ -115,8 +118,8 @@ includes:
   orca: ./orca-docker-vm/Taskfile.yaml
 ```
 
-`task orca:setup`, `orca:claude-login`, `orca:git-token`, `orca:base-image`, `orca:check`,
-`orca:update`.
+`task orca:setup`, `orca:claude-login`, `orca:cursor-login`, `orca:git-token`, `orca:base-image`,
+`orca:check`, `orca:update`.
 
 ### Tokens
 
@@ -129,11 +132,17 @@ includes:
 - **Claude.** A normal `claude auth login` (OAuth, refreshed by Claude Code itself), the way
   [Anthropic's dev container guide](https://code.claude.com/docs/en/devcontainer#persist-authentication-and-settings-across-rebuilds)
   persists it: a named Docker volume (`orca-claude`) that every workspace container mounts at
-  `/home/dev/.claude`, with `CLAUDE_CONFIG_DIR` pointing there. You log in once for all projects,
-  and there is no Claude token on the host or in `/etc/environment`. Session history and settings
+  `/home/dev/.claude`, with `CLAUDE_CONFIG_DIR` pointing there. You log in once for all projects
+  via `claude-login.sh`; nothing is taken from the host Claude login. Session history and settings
   in that directory are shared between workspaces too. Unlike a `claude setup-token` token,
   this login also supports Remote Control and claude.ai connectors. The volume holds a refresh
   token that agents in the container can read; revoke it with `/logout` if needed.
+- **Cursor Agent.** A normal `agent login` (OAuth) into a separate named Docker volume
+  (`orca-cursor`) mounted at `/home/dev/.config/cursor`, with `CURSOR_CONFIG_DIR` pointing there.
+  The image sets `AGENT_CLI_CREDENTIAL_STORE=file` so tokens land in `auth.json` on that volume
+  (the default OS keychain store is unavailable in containers). Log in once via `cursor-login.sh`
+  for all projects; the host Cursor IDE login is never copied or mounted. Revoke with
+  `agent logout` inside a container that mounts the volume.
 
 ### Where tokens are stored
 
@@ -194,8 +203,9 @@ task test:e2e    # render, then this repo's recipe for real: build, create, SSH 
 
 `task render` uses `copier recopy`, not `update`: update refuses a dirty repo, and here the template
 and the project are the same repo. The image holds committed files only, and `create` fetches
-`repo_ref` from GitHub, so the e2e test needs the branch pushed. It uses the Claude login volume
-(run `orca-docker-vm/claude-login.sh` first) and reads `ORCA_GIT_TOKEN` as the git token, defaulting
-to `gh auth token`, which is acceptable here because the test container is thrown away.
+`repo_ref` from GitHub, so the e2e test needs the branch pushed. It uses the Claude and Cursor
+login volumes (run `claude-login.sh` and `cursor-login.sh` first) and reads `ORCA_GIT_TOKEN` as
+the git token, defaulting to `gh auth token`, which is acceptable here because the test container
+is thrown away.
 
 The e2e test also greps the image config and `docker history` for the git token.

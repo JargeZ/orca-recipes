@@ -56,6 +56,11 @@ claude_volume:
   help: Docker volume holding the Claude Code login (shared by all projects)
   default: orca-claude
 
+cursor_volume:
+  type: str
+  help: Docker volume holding the Cursor Agent login (shared by all projects)
+  default: orca-cursor
+
 git_host:
   type: str
   default: "{{ repo_url.split('/')[2] }}"

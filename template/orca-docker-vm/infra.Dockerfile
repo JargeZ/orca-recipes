@@ -1,6 +1,6 @@
 # check=skip=InvalidDefaultArgInFrom
 # Orca infra layered on top of the project's dev image (built from the project's dev.Dockerfile):
-# sshd + the `dev` user Orca logs in as, Node for Orca's SSH relay, git/gh, task, and Claude Code.
+# sshd + the `dev` user Orca logs in as, Node for Orca's SSH relay, git/gh, task, Claude Code, Cursor Agent.
 # Last, the repo checkout (the `repo` build context from docker-base-image.sh) and its deps.
 ARG DEV_IMAGE
 FROM ${DEV_IMAGE}
@@ -43,11 +43,17 @@ USER dev
 RUN curl -fsSL https://claude.ai/install.sh | bash \
     # The shared login volume is mounted here (docker-create.sh); a new volume starts as a copy of this
     # dir, so the first-run wizard stays skipped.
-    && mkdir -p /home/dev/.claude && echo '{"hasCompletedOnboarding": true}' > /home/dev/.claude/.claude.json
+    && mkdir -p /home/dev/.claude && echo '{"hasCompletedOnboarding": true}' > /home/dev/.claude/.claude.json \
+    # Cursor Agent CLI; login volume mounts at CURSOR_CONFIG_DIR (AGENT_CLI_CREDENTIAL_STORE=file).
+    && curl -fsSL https://cursor.com/install | bash \
+    && mkdir -p /home/dev/.config/cursor
 USER root
 
 ENV PATH=/home/dev/.local/bin:$PATH \
     CLAUDE_CONFIG_DIR=/home/dev/.claude \
+    CURSOR_CONFIG_DIR=/home/dev/.config/cursor \
+    # Default keychain store is unavailable in containers; file store writes auth.json under CURSOR_CONFIG_DIR.
+    AGENT_CLI_CREDENTIAL_STORE=file \
     # Debian's node-gyp imports the distro `gyp` module, absent from non-distro python3s.
     npm_config_python=/usr/bin/python3
 # SSH sessions don't inherit image ENV (including the dev image's): pam_env reads /etc/environment,

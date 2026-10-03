@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Orca `create`: boots a container from the base image with the shared Claude login volume, hands it
-# the git token, checks out the workspace branch, reruns the sync command (the lock may have moved
-# since the image), and prints the SSH recipe result.
+# Orca `create`: boots a container from the base image with the shared Claude and Cursor login
+# volumes, hands it the git token, checks out the workspace branch, reruns the sync command (the
+# lock may have moved since the image), and prints the SSH recipe result.
 # With `checkoutMode: provisioned-root` in orca.yaml (schema 2) that checkout is the workspace itself:
 # one container per workspace, one entry in Orca. Schema 1 (older orca.yaml) keeps Orca's default of
 # a linked worktree next to a repo_ref checkout.
@@ -16,6 +16,7 @@ source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
 # Checked first: `docker run -v` would silently create an empty, logged-out volume.
 docker volume inspect "$claude_volume" >/dev/null 2>&1 || { echo "No Claude login volume '$claude_volume': run orca-docker-vm/prepare.sh" >&2; exit 1; }
+docker volume inspect "$cursor_volume" >/dev/null 2>&1 || { echo "No Cursor login volume '$cursor_volume': run orca-docker-vm/prepare.sh" >&2; exit 1; }
 require_git_token
 schema="${ORCA_RECIPE_RESULT_SCHEMA_VERSION:-1}"
 case "$schema" in 1|2) ;; *) echo "Unsupported ORCA_RECIPE_RESULT_SCHEMA_VERSION=$schema" >&2; exit 1 ;; esac
@@ -31,7 +32,7 @@ name="$(printf 'orca-%s-%s' "${ORCA_RECIPE_ID:-docker}" "${ORCA_VM_INSTANCE_ID:-
 ok=0
 trap '[ "$ok" = 1 ] || { docker logs "$name" >&2 2>&1 || true; docker rm -f "$name" >/dev/null 2>&1 || true; }' EXIT
 
-docker run -d --name "$name" -p 127.0.0.1::22 -v "$claude_mount" -e "ORCA_SSH_PUBLIC_KEY=$(cat "$key.pub")" "$image" >&2
+docker run -d --name "$name" -p 127.0.0.1::22 -v "$claude_mount" -v "$cursor_mount" -e "ORCA_SSH_PUBLIC_KEY=$(cat "$key.pub")" "$image" >&2
 port="$(docker port "$name" 22/tcp | head -1 | sed 's/.*://')"
 
 host_key=""
@@ -60,7 +61,7 @@ done
 docker exec -i -u dev "$name" bash -s <<<"$(sync_script)" >&2 \
   || { echo "Checking out ${ORCA_REPO_BRANCH:-$repo_ref} from $repo_url failed: is it pushed there?" >&2; exit 1; }
 
-# Checks what an Orca session actually gets: SSH login env, Claude auth, git auth.
+# Checks what an Orca session actually gets: SSH login env, Claude/Cursor auth, git auth.
 ssh_opts=(-i "$key" -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes)
 for _ in $(seq 50); do
   ssh "${ssh_opts[@]}" dev@127.0.0.1 true 2>/dev/null && break
@@ -68,6 +69,8 @@ for _ in $(seq 50); do
 done
 ssh "${ssh_opts[@]}" dev@127.0.0.1 'claude --version && claude auth status >/dev/null' >&2 \
   || { echo "Claude is not logged in (volume '$claude_volume'): run orca-docker-vm/prepare.sh" >&2; exit 1; }
+ssh "${ssh_opts[@]}" dev@127.0.0.1 'agent --version && agent status >/dev/null' >&2 \
+  || { echo "Cursor Agent is not logged in (volume '$cursor_volume'): run orca-docker-vm/prepare.sh" >&2; exit 1; }
 # shellcheck disable=SC2029  # project_root expands locally on purpose
 ssh "${ssh_opts[@]}" dev@127.0.0.1 "cd '$project_root' && git ls-remote --exit-code origin HEAD >/dev/null" >&2
 

@@ -14,6 +14,12 @@ tasks:
     cmds:
       - '{{.TASKFILE_DIR}}/claude-login.sh'
 
+  cursor-login:
+    desc: Log Cursor Agent in once into the shared Docker volume (no-op if the login works, FORCE=1 to redo)
+    interactive: true
+    cmds:
+      - '{{.TASKFILE_DIR}}/cursor-login.sh'
+
   git-token:
     desc: Store a git token scoped to this repo in the host keyring (no-op if present, FORCE=1 to replace)
     interactive: true

@@ -52,6 +52,11 @@ secret_set() {  # secret_set <name> <label> <comment> <token>
 claude_mount="$claude_volume:/home/dev/.claude"
 claude_run() { docker run --rm -u dev --entrypoint claude -v "$claude_mount" "$@"; }  # claude_run [-it] <image> <args>
 
+# Cursor Agent login lives in a separate named volume (host Cursor login is never used). AUTH is a file
+# under CURSOR_CONFIG_DIR because AGENT_CLI_CREDENTIAL_STORE=file (set in infra.Dockerfile).
+cursor_mount="$cursor_volume:/home/dev/.config/cursor"
+cursor_run() { docker run --rm -u dev --entrypoint agent -v "$cursor_mount" "$@"; }  # cursor_run [-it] <image> <args>
+
 # Token scoped to this repo only; never the host's broad `gh auth token`.
 git_token() { printf '%s' "${ORCA_GIT_TOKEN:-$(secret_get "$git_token_keychain_service")}"; }
 

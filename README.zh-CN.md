@@ -35,7 +35,7 @@
 | 智能体 | 状态 |
 |---|---|
 | Claude Code | ✅ 支持 |
-| cursor-agent | 🚧 即将支持 |
+| cursor-agent | ✅ 支持 |
 | opencode | 🚧 即将支持 |
 | …其他 | 💡 [欢迎 PR](https://github.com/JargeZ/orca-recipes/pulls) |
 
@@ -71,7 +71,7 @@ uvx copier copy gh:JargeZ/orca-recipes .
 ./orca-docker-vm/prepare.sh
 ```
 
-它会配置 Git 令牌、构建基础镜像、登录 Claude 并运行自检。
+它会配置 Git 令牌、构建基础镜像、登录 Claude 和 Cursor Agent 并运行自检。
 全部通过后,在 Orca 界面中创建一个新工作区,确认它能正常启动。
 
 如果出了问题,请让你的智能体来修复:模板渲染后,所有配方代码都在你的仓库中(`orca-docker-vm/`)。

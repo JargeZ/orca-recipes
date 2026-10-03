@@ -36,7 +36,7 @@ local pour chaque workspace.
 | Agent | Statut |
 |---|---|
 | Claude Code | ✅ Oui |
-| cursor-agent | 🚧 Bientôt |
+| cursor-agent | ✅ Oui |
 | opencode | 🚧 Bientôt |
 | …autres | 💡 [Les PR sont bienvenues](https://github.com/JargeZ/orca-recipes/pulls) |
 
@@ -73,7 +73,7 @@ uniquement, et tout chemin hors du dépôt où l'installation des dépendances �
 ./orca-docker-vm/prepare.sh
 ```
 
-Il configure le token git, construit l'image de base, connecte Claude et lance un auto-test.
+Il configure le token git, construit l'image de base, connecte Claude et Cursor Agent et lance un auto-test.
 Quand tout est au vert, créez un nouveau workspace depuis l'interface d'Orca et vérifiez qu'il démarre.
 
 En cas de problème, demandez à votre agent de le corriger : après la génération, tout le code de la recette
