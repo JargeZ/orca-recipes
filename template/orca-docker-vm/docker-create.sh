@@ -5,6 +5,10 @@
 # With `checkoutMode: provisioned-root` in orca.yaml (schema 2) that checkout is the workspace itself:
 # one container per workspace, one entry in Orca. Schema 1 (older orca.yaml) keeps Orca's default of
 # a linked worktree next to a repo_ref checkout.
+# Known Orca gaps for these workspaces:
+#   Source Control and Agent Session History panels stay empty: https://github.com/stablyai/orca/issues/22229
+#   recipe SSH targets lose SSH-host features (session history, Open in VS Code, drag & drop; likely
+#   also the Ports tab, no dedicated issue): https://github.com/stablyai/orca/issues/10946
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
