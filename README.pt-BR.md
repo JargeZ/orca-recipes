@@ -37,7 +37,7 @@ local para cada workspace.
 |---|---|
 | Claude Code | ✅ Sim |
 | cursor-agent | ✅ Sim |
-| opencode | 🚧 Em breve |
+| opencode (v2) | ✅ Sim |
 | …outros | 💡 [PRs são bem-vindos](https://github.com/JargeZ/orca-recipes/pulls) |
 
 ## 🚀 Instalação
@@ -73,7 +73,7 @@ e qualquer caminho fora do repositório em que a instalação de dependências e
 ./orca-docker-vm/prepare.sh
 ```
 
-Ele configura o token do git, constrói a imagem base, faz login no Claude e no Cursor Agent e roda um autoteste.
+Ele configura o token do git, constrói a imagem base, faz login no Claude, no Cursor Agent e no OpenCode e roda um autoteste.
 Quando tudo estiver verde, crie um novo workspace pela interface do Orca e confira se ele sobe.
 
 Se algo der errado, peça ao seu agente para corrigir: depois da renderização, todo o código da receita

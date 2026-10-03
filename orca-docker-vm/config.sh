@@ -15,3 +15,5 @@ git_token_keychain_service='orca-recipes-orca-git-token'
 claude_volume='orca-claude'
 # Docker volume with the Cursor Agent login, shared by all projects.
 cursor_volume='orca-cursor'
+# Docker volume with the OpenCode login and sessions, shared by all projects.
+opencode_volume='orca-opencode'

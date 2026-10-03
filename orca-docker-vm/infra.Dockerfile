@@ -1,6 +1,6 @@
 # check=skip=InvalidDefaultArgInFrom
 # Orca infra layered on top of the project's dev image (built from the project's dev.Dockerfile):
-# sshd + the `dev` user Orca logs in as, Node for Orca's SSH relay, git/gh, task, Claude Code, Cursor Agent.
+# sshd + the `dev` user Orca logs in as, Node for Orca's SSH relay, git/gh, task, Claude Code, Cursor Agent, OpenCode.
 # Last, the repo checkout (the `repo` build context from docker-base-image.sh) and its deps.
 ARG DEV_IMAGE
 FROM ${DEV_IMAGE}
@@ -46,10 +46,13 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
     && mkdir -p /home/dev/.claude && echo '{"hasCompletedOnboarding": true}' > /home/dev/.claude/.claude.json \
     # Cursor Agent CLI; login volume mounts at CURSOR_CONFIG_DIR (AGENT_CLI_CREDENTIAL_STORE=file).
     && curl -fsSL https://cursor.com/install | bash \
-    && mkdir -p /home/dev/.config/cursor
+    && mkdir -p /home/dev/.config/cursor \
+    # OpenCode v2 (installs to ~/.opencode/bin); login volume mounts at its data dir (SQLite db).
+    && curl -fsSL https://opencode.ai/v2/install | bash \
+    && mkdir -p /home/dev/.local/share/opencode
 USER root
 
-ENV PATH=/home/dev/.local/bin:$PATH \
+ENV PATH=/home/dev/.local/bin:/home/dev/.opencode/bin:$PATH \
     CLAUDE_CONFIG_DIR=/home/dev/.claude \
     CURSOR_CONFIG_DIR=/home/dev/.config/cursor \
     # Default keychain store is unavailable in containers; file store writes auth.json under CURSOR_CONFIG_DIR.

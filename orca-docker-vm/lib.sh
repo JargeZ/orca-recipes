@@ -57,6 +57,11 @@ claude_run() { docker run --rm -u dev --entrypoint claude -v "$claude_mount" "$@
 cursor_mount="$cursor_volume:/home/dev/.config/cursor"
 cursor_run() { docker run --rm -u dev --entrypoint agent -v "$cursor_mount" "$@"; }  # cursor_run [-it] <image> <args>
 
+# OpenCode v2 keeps credentials (and sessions) in a SQLite db under its data dir, not in auth.json:
+# the whole data dir is a named volume shared by every workspace.
+opencode_mount="$opencode_volume:/home/dev/.local/share/opencode"
+opencode_run() { docker run --rm -u dev --entrypoint opencode -v "$opencode_mount" "$@"; }  # opencode_run [-it] <image> <args>
+
 # Token scoped to this repo only; never the host's broad `gh auth token`.
 git_token() { printf '%s' "${ORCA_GIT_TOKEN:-$(secret_get "$git_token_keychain_service")}"; }
 

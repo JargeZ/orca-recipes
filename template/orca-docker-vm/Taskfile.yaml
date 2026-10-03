@@ -20,6 +20,12 @@ tasks:
     cmds:
       - '{{.TASKFILE_DIR}}/cursor-login.sh'
 
+  opencode-login:
+    desc: Log OpenCode in once into the shared Docker volume (no-op if a login exists, FORCE=1 to redo)
+    interactive: true
+    cmds:
+      - '{{.TASKFILE_DIR}}/opencode-login.sh'
+
   git-token:
     desc: Store a git token scoped to this repo in the host keyring (no-op if present, FORCE=1 to replace)
     interactive: true

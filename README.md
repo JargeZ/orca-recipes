@@ -37,7 +37,7 @@ every workspace, in one click.
 |---|---|
 | Claude Code | ✅ Yes |
 | cursor-agent | ✅ Yes |
-| opencode | 🚧 Soon |
+| opencode (v2) | ✅ Yes |
 | …others | 💡 [PRs welcome](https://github.com/JargeZ/orca-recipes/pulls) |
 
 ## 🚀 Installation
@@ -73,7 +73,7 @@ only, and any path outside the repo that dependency installation writes to must 
 ./orca-docker-vm/prepare.sh
 ```
 
-It sets up the git token, builds the base image, logs Claude and Cursor Agent in and runs a self-test.
+It sets up the git token, builds the base image, logs Claude, Cursor Agent and OpenCode in and runs a self-test.
 Once everything is green, create a new workspace in the Orca UI and check that it comes up.
 
 If something goes wrong, ask your agent to fix it: after rendering, all the recipe code lives in
