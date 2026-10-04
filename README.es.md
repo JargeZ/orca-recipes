@@ -73,7 +73,7 @@ y cualquier ruta fuera del repositorio en la que escriba la instalación de depe
 ./orca-docker-vm/prepare.sh
 ```
 
-Configura el token de git, construye la imagen base, inicia sesión en Claude, Cursor Agent y OpenCode y ejecuta un autotest.
+Pregunta qué agentes configurar (Claude Code, Cursor Agent, OpenCode), configura el token de git, construye la imagen base, inicia sesión en los agentes elegidos y ejecuta un autotest.
 Cuando todo esté en verde, crea un nuevo workspace desde la interfaz de Orca y comprueba que arranca.
 
 Si algo sale mal, pide a tu agente que lo arregle: tras el renderizado, todo el código de la receta

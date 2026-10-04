@@ -73,7 +73,7 @@ uvx copier copy gh:JargeZ/orca-recipes .
 ./orca-docker-vm/prepare.sh
 ```
 
-Git トークンの設定、ベースイメージのビルド、Claude、Cursor Agent、OpenCode へのログイン、セルフテストを行います。
+どのエージェント（Claude Code、Cursor Agent、OpenCode）を設定するか確認したうえで、Git トークンの設定、ベースイメージのビルド、選んだエージェントへのログイン、セルフテストを行います。
 すべて緑になったら、Orca の UI で新しいワークスペースを作成し、起動することを確認してください。
 
 うまくいかない場合は、エージェントに修正を依頼してください。レンダリング後、レシピのコードはすべて

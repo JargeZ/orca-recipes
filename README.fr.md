@@ -73,7 +73,7 @@ uniquement, et tout chemin hors du dépôt où l'installation des dépendances �
 ./orca-docker-vm/prepare.sh
 ```
 
-Il configure le token git, construit l'image de base, connecte Claude, Cursor Agent et OpenCode et lance un auto-test.
+Il demande quels agents configurer (Claude Code, Cursor Agent, OpenCode), configure le token git, construit l'image de base, connecte les agents choisis et lance un auto-test.
 Quand tout est au vert, créez un nouveau workspace depuis l'interface d'Orca et vérifiez qu'il démarre.
 
 En cas de problème, demandez à votre agent de le corriger : après la génération, tout le code de la recette

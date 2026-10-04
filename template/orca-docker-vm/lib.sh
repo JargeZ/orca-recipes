@@ -47,20 +47,37 @@ secret_set() {  # secret_set <name> <label> <comment> <token>
   echo "Saved to $(secret_where "$1")." >&2
 }
 
-# Claude Code's login and state live in a named volume shared by every workspace container, mounted at
-# CLAUDE_CONFIG_DIR (set in infra.Dockerfile), as in Anthropic's dev container guide.
-claude_mount="$claude_volume:/home/dev/.claude"
-claude_run() { docker run --rm -u dev --entrypoint claude -v "$claude_mount" "$@"; }  # claude_run [-it] <image> <args>
+# Coding agents. Each one logs in once (orca-docker-vm/<id>-login.sh, a step of prepare.sh) into its own
+# Docker volume shared by every workspace; docker-create.sh mounts and checks the agents whose volume
+# exists. Per agent: <id>_volume (copier.yml + config.sh.jinja), <id>_label, <id>_mount, <id>_check (a
+# login check run over SSH), <id>_run. Adding one = an entry here, <id>-login.sh, install in infra.Dockerfile.
+# Fields are read through agent_var; checks expand remotely.
+# shellcheck disable=SC2034,SC2016
+{
+  agents=(claude cursor opencode)
+  agent_var() { local v="${1}_$2"; printf '%s' "${!v}"; }  # agent_var <id> <field>
 
-# Cursor Agent login lives in a separate named volume (host Cursor login is never used). AUTH is a file
-# under CURSOR_CONFIG_DIR because AGENT_CLI_CREDENTIAL_STORE=file (set in infra.Dockerfile).
-cursor_mount="$cursor_volume:/home/dev/.config/cursor"
-cursor_run() { docker run --rm -u dev --entrypoint agent -v "$cursor_mount" "$@"; }  # cursor_run [-it] <image> <args>
+  # Claude Code's login and state live in a named volume shared by every workspace container, mounted at
+  # CLAUDE_CONFIG_DIR (set in infra.Dockerfile), as in Anthropic's dev container guide.
+  claude_label="Claude Code"
+  claude_mount="$claude_volume:/home/dev/.claude"
+  claude_check='claude --version && claude auth status >/dev/null'
+  claude_run() { docker run --rm -u dev --entrypoint claude -v "$claude_mount" "$@"; }  # claude_run [-it] <image> <args>
 
-# OpenCode v2 keeps credentials (and sessions) in a SQLite db under its data dir, not in auth.json:
-# the whole data dir is a named volume shared by every workspace.
-opencode_mount="$opencode_volume:/home/dev/.local/share/opencode"
-opencode_run() { docker run --rm -u dev --entrypoint opencode -v "$opencode_mount" "$@"; }  # opencode_run [-it] <image> <args>
+  # Cursor Agent login lives in a separate named volume (host Cursor login is never used). AUTH is a file
+  # under CURSOR_CONFIG_DIR because AGENT_CLI_CREDENTIAL_STORE=file (set in infra.Dockerfile).
+  cursor_label="Cursor Agent"
+  cursor_mount="$cursor_volume:/home/dev/.config/cursor"
+  cursor_check='agent --version && agent status >/dev/null'
+  cursor_run() { docker run --rm -u dev --entrypoint agent -v "$cursor_mount" "$@"; }  # cursor_run [-it] <image> <args>
+
+  # OpenCode v2 keeps credentials (and sessions) in a SQLite db under its data dir, not in auth.json:
+  # the whole data dir is a named volume shared by every workspace. No saved integration prints [].
+  opencode_label="OpenCode"
+  opencode_mount="$opencode_volume:/home/dev/.local/share/opencode"
+  opencode_check='opencode --version && [ "$(opencode auth list --format json)" != "[]" ]'
+  opencode_run() { docker run --rm -u dev --entrypoint opencode -v "$opencode_mount" "$@"; }  # opencode_run [-it] <image> <args>
+}
 
 # Token scoped to this repo only; never the host's broad `gh auth token`.
 git_token() { printf '%s' "${ORCA_GIT_TOKEN:-$(secret_get "$git_token_keychain_service")}"; }

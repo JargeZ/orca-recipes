@@ -27,14 +27,14 @@ enters a build step, a layer or the image config.
 
 On each workspace, `docker-create.sh` does the following:
 
-1. Boots a container from that image, with the shared Claude, Cursor and OpenCode login volumes
-   mounted.
+1. Boots a container from that image, with the shared login volume of every agent set up by
+   `prepare.sh` mounted (an agent without a volume is skipped).
 2. Writes the git token into the container's `/etc/environment`. The token is never stored in
    the image.
 3. Copies your host `git config user.name` and `user.email` into the container.
 4. Fetches `repo_ref` and runs the sync command again, in case the lock file moved.
-5. Checks over SSH what an Orca session will get: `claude auth status`, `agent status`,
-   `opencode auth list` and `git ls-remote`.
+5. Checks over SSH what an Orca session will get: each mounted agent's login (`claude auth status`,
+   `agent status`, `opencode auth list`) and `git ls-remote`.
 
 `docker-destroy.sh` removes the container and its `known_hosts` entry.
 
@@ -96,10 +96,12 @@ The copy creates the following files:
 Then provision:
 
 ```bash
-./orca-docker-vm/prepare.sh      # git token → base image → Claude/Cursor/OpenCode login → self-test
+./orca-docker-vm/prepare.sh      # which agents? → git token → base image → agent logins → self-test
 ```
 
-`prepare.sh` runs the individual scripts in order and says what each step does. Every step checks
+`prepare.sh` first asks `[Y/n]` for each agent (Claude Code, Cursor Agent, OpenCode); without a
+terminal it sets up all of them. Workspaces get the agents whose login volume exists, so answering
+`n` for an agent already set up does not remove it (`docker volume rm` does). Then it runs the individual scripts in order and says what each step does. Every step checks
 first and only asks for input when something is missing or broken, so if anything breaks later (an
 expired token, a logged-out agent), rerunning `prepare.sh` fixes it.
 
@@ -153,6 +155,19 @@ includes:
   The global config dir (`~/.config/opencode`) is not persisted; keep project config in the repo.
   Log in once via `opencode-login.sh` for all projects; the host OpenCode login is never copied.
   Revoke with `opencode auth logout` inside a container that mounts the volume.
+
+### Adding an agent
+
+Agents are listed in `agents=(...)` in `template/orca-docker-vm/lib.sh`; `prepare.sh`,
+`docker-create.sh` and `tests/e2e.sh` loop over that list. For a new agent `<id>`:
+
+1. `copier.yml`: question `<id>_volume` (default `orca-<id>`); `config.sh.jinja`: `<id>_volume=...`.
+2. `lib.sh`: add `<id>` to `agents`, then `<id>_label`, `<id>_mount` (volume → the dir holding its
+   login), `<id>_check` (shell run over SSH, exits non-zero when logged out) and `<id>_run`.
+3. `infra.Dockerfile`: install it as `dev`, `mkdir -p` the mount dir (a new volume copies its
+   owner), any `ENV` it needs to find its config there, and its bin dir in `PATH`.
+4. `<id>-login.sh`, copied from `cursor-login.sh`: check, otherwise log in with `<id>_run -it`.
+5. `Taskfile.yaml`: an `<id>-login` task; docs: this file and the README agent tables.
 
 ### Where tokens are stored
 
