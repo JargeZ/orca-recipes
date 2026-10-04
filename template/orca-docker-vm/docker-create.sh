@@ -37,9 +37,16 @@ fi
 
 name="$(printf 'orca-%s-%s' "${ORCA_RECIPE_ID:-docker}" "${ORCA_VM_INSTANCE_ID:-$(date +%s)}" | tr -c 'a-zA-Z0-9_.-' '-' | cut -c1-60)"
 ok=0
-trap '[ "$ok" = 1 ] || { docker logs "$name" >&2 2>&1 || true; docker rm -f "$name" >/dev/null 2>&1 || true; }' EXIT
+trap '[ "$ok" = 1 ] || { docker logs "$name" >&2 2>&1 || true; docker rm -fv "$name" >/dev/null 2>&1 || true; }' EXIT
 
-docker run -d --name "$name" -p 127.0.0.1::22 ${mounts[@]+"${mounts[@]}"} -e "ORCA_SSH_PUBLIC_KEY=$(cat "$key.pub")" "$image" >&2
+run_opts=()
+# Podman (copier `podman`), rootless inside without --privileged: its user namespaces need seccomp and
+# AppArmor off and an unmasked /proc, slirp4netns needs /dev/net/tun; storage is an anonymous volume,
+# removed by `docker rm -v` in docker-destroy.sh. --init reaps the background service.
+[ "$podman" != true ] || run_opts+=(--init --device /dev/net/tun -v /home/dev/.local/share/containers
+  --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined)
+docker run -d --name "$name" -p 127.0.0.1::22 ${run_opts[@]+"${run_opts[@]}"} ${mounts[@]+"${mounts[@]}"} \
+  -e "ORCA_SSH_PUBLIC_KEY=$(cat "$key.pub")" "$image" >&2
 port="$(docker port "$name" 22/tcp | head -1 | sed 's/.*://')"
 
 host_key=""
@@ -79,6 +86,13 @@ for a in ${enabled[@]+"${enabled[@]}"}; do
   ssh "${ssh_opts[@]}" dev@127.0.0.1 "$(agent_var "$a" check)" >&2 \
     || { echo "$(agent_var "$a" label) is not logged in (volume '$(agent_var "$a" volume)'): run orca-docker-vm/prepare.sh" >&2; exit 1; }
 done
+if [ "$podman" = true ]; then
+  for i in $(seq 50); do
+    ssh "${ssh_opts[@]}" dev@127.0.0.1 'docker info >/dev/null 2>&1' && break
+    [ "$i" != 50 ] || { docker exec "$name" tail -5 /var/log/podman.log >&2; echo "Docker API (rootless Podman) did not come up" >&2; exit 1; }
+    sleep 0.2
+  done
+fi
 # shellcheck disable=SC2029  # project_root expands locally on purpose
 ssh "${ssh_opts[@]}" dev@127.0.0.1 "cd '$project_root' && git ls-remote --exit-code origin HEAD >/dev/null" >&2
 

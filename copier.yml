@@ -66,6 +66,11 @@ opencode_volume:
   help: Docker volume holding the OpenCode login and sessions (shared by all projects)
   default: orca-opencode
 
+podman:
+  type: bool
+  help: Docker inside each workspace (docker run/build/compose) via rootless Podman, without --privileged
+  default: true
+
 git_host:
   type: str
   default: "{{ repo_url.split('/')[2] }}"

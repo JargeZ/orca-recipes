@@ -17,7 +17,8 @@ infrastructure and keeps it updatable with `copier update`.
 dev.Dockerfile           project-owned: base image, system packages, language toolchain, ENV
   └─ infra.Dockerfile    template: sshd, `dev` user (uid 1000), Node for Orca's SSH relay,
                          gh, task, Claude Code, Cursor Agent, OpenCode, git credential
-                         helper, ENV → SSH sessions, then the repo at project_root + sync as `dev`
+                         helper, rootless Podman + Docker CLI (optional), ENV → SSH sessions,
+                         then the repo at project_root + sync as `dev`
           = localhost/<project_slug>-orca    (what every workspace boots from)
 ```
 
@@ -28,15 +29,46 @@ enters a build step, a layer or the image config.
 On each workspace, `docker-create.sh` does the following:
 
 1. Boots a container from that image, with the shared login volume of every agent set up by
-   `prepare.sh` mounted (an agent without a volume is skipped).
+   `prepare.sh` mounted (an agent without a volume is skipped). With `podman`, also mounts a fresh
+   volume for Podman's storage and sets the flags rootless Podman needs.
 2. Writes the git token into the container's `/etc/environment`. The token is never stored in
    the image.
 3. Copies your host `git config user.name` and `user.email` into the container.
 4. Fetches `repo_ref` and runs the sync command again, in case the lock file moved.
 5. Checks over SSH what an Orca session will get: each mounted agent's login (`claude auth status`,
-   `agent status`, `opencode auth list`) and `git ls-remote`.
+   `agent status`, `opencode auth list`), `docker info` (with `podman`) and `git ls-remote`.
 
-`docker-destroy.sh` removes the container and its `known_hosts` entry.
+`docker-destroy.sh` removes the container, its Podman storage volume and its `known_hosts` entry.
+
+### Containers inside a workspace
+
+With the copier answer `podman` (default `true`), agents get `docker run`, `docker build` and
+`docker compose` (ports included) inside the workspace. `podman: false` renders the recipe without any
+of it. The Podman parts are separate blocks marked `Podman (copier \`podman\`)`: the `{% if podman %}`
+blocks in `infra.Dockerfile.jinja` and `docker-entrypoint.sh.jinja` (one `RUN` per step: packages,
+user namespace, storage, Docker CLI, `ENV`), and the `$podman` checks in `docker-create.sh` and
+`tests/e2e.sh`. The engine is **rootless Podman** running as `dev`. `docker-entrypoint.sh` starts
+`podman system service` in the background, and the real Docker CLI and compose plugin talk to it
+through `DOCKER_HOST`. The workspace container does **not** run `--privileged`. Classic
+Docker-in-Docker, rootless dockerd included, needs `--privileged`, which is root on the Docker VM or
+host kernel, where every other container and the agent login volumes live.
+
+`docker-create.sh` passes only what rootless Podman needs and no extra capabilities:
+`--security-opt seccomp=unconfined` (Docker's profile blocks the user namespace clone),
+`apparmor=unconfined`, `systempaths=unconfined` (nested containers mount `/proc`) and
+`--device /dev/net/tun` (slirp4netns/pasta networking). It also adds an anonymous volume at
+`~/.local/share/containers`, because native overlay can't nest on the container's overlay root.
+`newuidmap`/`newgidmap` run with file caps instead of setuid, as in `quay.io/podman/stable`: a setuid
+one runs as root, not as the user namespace's owner, and gets EPERM without `CAP_SYS_ADMIN`.
+
+Limits compared to a real Docker host:
+- No BuildKit or buildx: its builder is a privileged container. `DOCKER_BUILDKIT=0` routes `docker build`
+  and `docker compose build` to Podman's buildah, which handles normal Dockerfiles, `RUN --mount` included.
+- No privileged inner containers, kind/k3d or cgroup limits (`--memory`, `--cpus`).
+- The Podman version comes from the `dev.Dockerfile` base: 4.3 on bookworm, 4.9 on Ubuntu 24.04,
+  5.x on trixie. Ubuntu 22.04 ships 3.4, which is too old for compose.
+- Linux hosts with `kernel.apparmor_restrict_unprivileged_userns=1` (Ubuntu 23.10+) may block the
+  inner user namespaces. Set that sysctl to 0 on the host.
 
 ### `dev.Dockerfile` contract
 
@@ -76,6 +108,7 @@ Copier asks the following questions:
 | `claude_volume` | `orca-claude` | Docker volume with the Claude Code login, shared by all projects |
 | `cursor_volume` | `orca-cursor` | Docker volume with the Cursor Agent login, shared by all projects |
 | `opencode_volume` | `orca-opencode` | Docker volume with the OpenCode login and sessions, shared by all projects |
+| `podman` | `true` | Docker inside each workspace via rootless Podman, see [Containers inside a workspace](#containers-inside-a-workspace) |
 
 The copy creates the following files:
 

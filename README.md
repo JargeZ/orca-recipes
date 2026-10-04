@@ -30,6 +30,7 @@ every workspace, in one click.
 - 🔐 **Fine-grained git tokens** — the token is scoped to a single repository
 - 🤖 **OAuth login for agents** — log in once, it works in every workspace
 - 🗝️ **Secrets in the system keychain** — macOS Keychain / Linux Secret Service, nothing ends up in the image
+- 🐳 **Docker inside the workspace** — `docker run/build/compose` via rootless Podman, no `--privileged` (optional)
 
 ## 🤖 Supported agents
 

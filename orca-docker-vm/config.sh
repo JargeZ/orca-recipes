@@ -17,3 +17,5 @@ claude_volume='orca-claude'
 cursor_volume='orca-cursor'
 # Docker volume with the OpenCode login and sessions, shared by all projects.
 opencode_volume='orca-opencode'
+# Rootless Podman + Docker CLI inside each workspace (true/false).
+podman=true

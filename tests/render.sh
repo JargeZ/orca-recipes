@@ -7,8 +7,9 @@ trap 'rm -rf "$tmp"' EXIT
 
 render "$tmp/gh" -d repo_url=https://github.com/acme/widgets.git -d project_slug=widgets
 render "$tmp/gl" -d repo_url=https://gitlab.com/acme/sub/gadgets.git -d project_slug=gadgets -d "sync_command=poetry install --with dev"
+render "$tmp/np" -d repo_url=https://github.com/acme/plain.git -d project_slug=plain -d podman=false
 
-for p in "$root" "$tmp/gh" "$tmp/gl"; do
+for p in "$root" "$tmp/gh" "$tmp/gl" "$tmp/np"; do
   for f in orca.yaml dev.Dockerfile orca-docker-vm/{config.sh,lib.sh,Taskfile.yaml,infra.Dockerfile,.copier-answers.yml}; do
     [ -f "$p/$f" ] || fail "$p: missing $f"
   done
@@ -29,13 +30,18 @@ done
 render "$tmp/sm" -d repo_url=https://git.example.com/acme/gizmos.git -d project_slug=gizmos
 (source "$tmp/sm/orca-docker-vm/config.sh"; [ "$git_host/$git_token_env" = git.example.com/GITLAB_TOKEN ]) || fail "self-managed gitlab derivation"
 
+# podman: on by default, and off leaves no trace of it in the image or entrypoint.
+grep -q podman "$tmp/gh/orca-docker-vm/infra.Dockerfile" || fail "podman missing by default"
+(source "$tmp/np/orca-docker-vm/config.sh"; [ "$podman" = false ]) || fail "podman=false not in config.sh"
+grep -qi podman "$tmp/np/orca-docker-vm/"{infra.Dockerfile,docker-entrypoint.sh} && fail "podman=false still installs podman"
+
 # Shell-special characters in answers survive config.sh quoting.
 render "$tmp/q" -d repo_url=https://github.com/acme/q.git -d project_slug=q -d "sync_command=echo 'it'\''s' \$HOME"
 (source "$tmp/q/orca-docker-vm/config.sh"; [ "$sync_command" = "echo 'it'\''s' \$HOME" ]) || fail "config quoting"
 
 # Update: template changes land, project-owned edits stay.
 echo '# mine' >> "$tmp/gh/dev.Dockerfile"; commit "$tmp/gh" mine
-echo '# v2' >> "$template/template/orca-docker-vm/infra.Dockerfile"; commit "$template" v2
+echo '# v2' >> "$template/template/orca-docker-vm/infra.Dockerfile.jinja"; commit "$template" v2
 (cd "$tmp/gh" && uvx copier update --quiet --defaults --vcs-ref HEAD -a orca-docker-vm/.copier-answers.yml >&2)
 grep -q '# v2' "$tmp/gh/orca-docker-vm/infra.Dockerfile" || fail "update did not apply template change"
 grep -q '# mine' "$tmp/gh/dev.Dockerfile" || fail "update clobbered dev.Dockerfile"

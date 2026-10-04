@@ -1,11 +1,12 @@
 # Changes here will be overwritten by Copier; rerun `orca-docker-vm/update.sh` instead of editing.
-_commit: a66ebcc
+_commit: '6758367'
 _src_path: .
 claude_volume: orca-claude
 cursor_volume: orca-cursor
 dev_dockerfile: dev.Dockerfile
 git_token_keychain_service: orca-recipes-orca-git-token
 opencode_volume: orca-opencode
+podman: true
 project_root: /home/dev/orca-recipes
 project_slug: orca-recipes
 repo_ref: main

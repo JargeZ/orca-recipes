@@ -51,6 +51,40 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
     && curl -fsSL https://opencode.ai/v2/install | bash \
     && mkdir -p /home/dev/.local/share/opencode
 USER root
+{%- if podman %}
+
+# Podman (copier `podman`): containers inside the workspace, without --privileged. Rootless Podman runs as
+# dev behind a Docker API socket (docker-entrypoint.sh), docker-create.sh adds the docker run flags it
+# needs. Each step below is self-contained.
+
+# Podman and rootless networking; passt (pasta, Podman 5) is missing from older distros.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends podman uidmap slirp4netns catatonit libcap2-bin \
+        $(apt-cache show passt >/dev/null 2>&1 && echo passt) \
+    && rm -rf /var/lib/apt/lists/*
+
+# User namespace for dev. A setuid newuidmap acts as root, not as the namespace owner, and lacks
+# CAP_SYS_ADMIN in a Docker container: file caps instead, as quay.io/podman/stable does.
+RUN echo dev:100000:65536 | tee /etc/subuid > /etc/subgid \
+    && chmod u-s /usr/bin/newuidmap /usr/bin/newgidmap \
+    && setcap cap_setuid=ep /usr/bin/newuidmap && setcap cap_setgid=ep /usr/bin/newgidmap
+
+# Storage: docker-create.sh mounts a volume here (native overlay can't nest on the container's overlay root).
+RUN install -d -o dev -g dev /home/dev/.local/share/containers /home/dev/.config /home/dev/.config/containers \
+    && printf '[storage]\ndriver = "overlay"\n' > /home/dev/.config/containers/storage.conf \
+    && chown dev:dev /home/dev/.config/containers/storage.conf
+
+# Docker CLI + compose from Docker's repo, talking to Podman. No buildx: BuildKit needs a privileged container.
+RUN curl -fsSL --create-dirs -o /etc/apt/keyrings/docker.asc "https://download.docker.com/linux/$(. /etc/os-release && echo "$ID")/gpg" \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$(. /etc/os-release && echo "$ID $VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+# Docker CLI → Podman's socket; the legacy builder maps to buildah.
+ENV XDG_RUNTIME_DIR=/run/user/1000 \
+    DOCKER_HOST=unix:///run/user/1000/podman/podman.sock \
+    DOCKER_BUILDKIT=0
+{%- endif %}
 
 ENV PATH=/home/dev/.local/bin:/home/dev/.opencode/bin:$PATH \
     CLAUDE_CONFIG_DIR=/home/dev/.claude \

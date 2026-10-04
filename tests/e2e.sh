@@ -35,7 +35,16 @@ on "cd $project_root && git push --dry-run origin HEAD:refs/heads/orca-e2e-probe
 [ "$(on 'git config user.email')" = "$(git config --global user.email)" ] || fail "git identity not copied"
 on "cd $project_root && uvx --offline copier --version" >/dev/null || fail "synced deps not cached"
 on 'env' | grep -q "^$git_token_env=" || fail "token not in session env"
+volume=""
+if [ "$podman" = true ]; then
+  on 'docker run --rm docker.io/library/hello-world' >/dev/null 2>&1 || fail "docker run inside workspace"
+  on 'd=$(mktemp -d) && printf "FROM docker.io/library/alpine\nRUN true\n" > $d/Dockerfile && docker build -q $d' >/dev/null 2>&1 \
+    || fail "docker build inside workspace"
+  on 'docker compose version' >/dev/null 2>&1 || fail "docker compose missing"
+  volume="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/home/dev/.local/share/containers"}}{{.Name}}{{end}}{{end}}' "$name")"
+fi
 
 "$s/docker-destroy.sh" <<<"{\"recipeResult\": $result}"; result=""
 docker inspect "$name" >/dev/null 2>&1 && fail "container survived destroy"
+[ -n "$volume" ] && docker volume inspect "$volume" >/dev/null 2>&1 && fail "podman storage volume survived destroy"
 echo "e2e: ok"

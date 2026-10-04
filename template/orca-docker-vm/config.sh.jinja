@@ -18,3 +18,5 @@ claude_volume={{ q(claude_volume) }}
 cursor_volume={{ q(cursor_volume) }}
 # Docker volume with the OpenCode login and sessions, shared by all projects.
 opencode_volume={{ q(opencode_volume) }}
+# Rootless Podman + Docker CLI inside each workspace (true/false).
+podman={{ 'true' if podman else 'false' }}
