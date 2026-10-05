@@ -19,21 +19,26 @@ Repository access: Only select repositories -> $repo
 Permissions: Contents, Pull requests, Issues, Workflows = Read and write (Metadata read is implied).
 MSG
   ;;
-  # Neither GitLab form takes prefill query params (unlike the legacy PAT form), so print the values.
+  # Only the legacy PAT form takes prefill query params, so the others get the values printed.
   *) cat >&2 <<MSG
-Create one token limited to $repo. Either kind works, fill in:
+Create one token limited to $repo. Any of these works; for the web forms fill in:
   Name:        orca-${repo##*/}
   Description: Orca Docker workspaces for $repo
   Expiration:  90 days
 
-A) Project access token (gitlab.com: Premium/Ultimate only; self-managed: any tier):
-  https://$git_host/$repo/-/settings/access_tokens
+A) Project access token (gitlab.com: Premium/Ultimate only; self-managed: any tier).
+  With glab logged in on this host, copy and run, it prints the token:
+    glab token create -R $repo_url -A developer -S api,write_repository -D 90d --description 'Orca Docker workspaces for $repo' orca-${repo##*/}
+  Or in the browser: https://$git_host/$repo/-/settings/access_tokens
   Role: Developer. Scopes: api, write_repository.
 
 B) Fine-grained personal access token (any tier; GitLab 18.10+):
   https://$git_host/-/user_settings/personal_access_tokens/granular/new
   Group and project access: only the project $repo.
   Permissions: Code = Download + Push; for glab also Merge request, Issue, Pipeline = read + write.
+
+C) Legacy personal access token, prefilled. Last resort: it reaches ALL your projects, not just $repo:
+  https://$git_host/-/user_settings/personal_access_tokens?name=orca-${repo##*/}&description=Orca+Docker+workspaces&scopes=api,write_repository
 MSG
   ;;
 esac
