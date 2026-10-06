@@ -107,5 +107,5 @@ ARG REPO_URL PROJECT_ROOT SYNC_COMMAND
 COPY --from=repo --chown=dev:dev . ${PROJECT_ROOT}
 USER dev
 WORKDIR ${PROJECT_ROOT}
-RUN git remote set-url origin "$REPO_URL" && bash -lc "$SYNC_COMMAND"
+RUN git remote set-url origin "$REPO_URL" && git checkout -q -- . && bash -lc "$SYNC_COMMAND"
 USER root

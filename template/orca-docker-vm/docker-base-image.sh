@@ -10,6 +10,9 @@ root="$(git -C "$here" rev-parse --show-toplevel)"
 src="$(mktemp -d)"
 trap 'rm -rf "$src"' EXIT
 git clone -q --branch "$repo_ref" "$root" "$src" >&2
+# BuildKit applies a context's .dockerignore to named contexts too; one excluding .git would break
+# the checkout. infra.Dockerfile restores the file from git.
+rm -f "$src/.dockerignore"
 
 docker build -t "$image-dev" -f "$root/$dev_dockerfile" "$root" >&2
 docker build -t "$image" -f "$here/infra.Dockerfile" --build-context repo="$src" \
