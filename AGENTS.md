@@ -133,15 +133,16 @@ Then provision:
 ```
 
 `prepare.sh` first asks `[Y/n]` for each agent (Claude Code, Cursor Agent, OpenCode); without a
-terminal it sets up all of them. Workspaces get the agents whose login volume exists, so answering
-`n` for an agent already set up does not remove it (`docker volume rm` does). Then it runs the individual scripts in order and says what each step does. Every step checks
+terminal it sets up all of them. For each chosen agent it creates the login volume. The image
+installs and workspaces mount only the agents whose login volume exists, so answering `n` for an
+agent already set up does not remove it (`docker volume rm` and a rebuild do). Then it runs the individual scripts in order and says what each step does. Every step checks
 first and only asks for input when something is missing or broken, so if anything breaks later (an
 expired token, a logged-out agent), rerunning `prepare.sh` fixes it.
 
 | Script | What it does |
 |---|---|
 | `git-token-setup.sh` | Prints where to create a repo-scoped token, verifies it with a `git push --dry-run`, saves it to the keyring (`FORCE=1` to replace) |
-| `docker-base-image.sh` | Rebuilds the image; rerun after `dev.Dockerfile` or dependency changes |
+| `docker-base-image.sh` | Rebuilds the image with the agents that have a login volume; rerun after `dev.Dockerfile`, dependency or agent changes |
 | `claude-login.sh` | Checks the Claude login with a one-line request; if it fails, runs `claude auth login` in a container (`FORCE=1` to redo) |
 | `cursor-login.sh` | Checks Cursor Agent auth status; if it fails, runs `agent login` in a container (`FORCE=1` to redo) |
 | `opencode-login.sh` | Checks OpenCode has a saved integration (`auth list`); if not, runs `opencode auth login` in a container (`FORCE=1` to redo) |
@@ -197,8 +198,9 @@ Agents are listed in `agents=(...)` in `template/orca-docker-vm/lib.sh`; `prepar
 1. `copier.yml`: question `<id>_volume` (default `orca-<id>`); `config.sh.jinja`: `<id>_volume=...`.
 2. `lib.sh`: add `<id>` to `agents`, then `<id>_label`, `<id>_mount` (volume → the dir holding its
    login), `<id>_check` (shell run over SSH, exits non-zero when logged out) and `<id>_run`.
-3. `infra.Dockerfile`: install it as `dev`, `mkdir -p` the mount dir (a new volume copies its
-   owner), any `ENV` it needs to find its config there, and its bin dir in `PATH`.
+3. `infra.Dockerfile`: in the agents `RUN`, under `if has <id>`, install it as `dev` and `mkdir -p`
+   the mount dir (a new volume copies its owner); add any `ENV` it needs to find its config there,
+   and its bin dir in `PATH`.
 4. `<id>-login.sh`, copied from `cursor-login.sh`: check, otherwise log in with `<id>_run -it`.
 5. `Taskfile.yaml`: an `<id>-login` task; docs: this file and the README agent tables.
 

@@ -31,7 +31,9 @@ for a in "${agents[@]}"; do
   case "$ans" in
     [nN]*) ! docker volume inspect "$volume" >/dev/null 2>&1 \
       || echo "  Volume '$volume' already exists, so workspaces still use $label; \`docker volume rm $volume\` drops it." >&2 ;;
-    *) chosen+=("$a") ;;
+    *) chosen+=("$a")
+      # The volume marks the agent as set up: the base image installs only those agents.
+      docker volume create "$volume" >/dev/null ;;
   esac
 done
 

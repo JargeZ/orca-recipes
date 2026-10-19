@@ -79,6 +79,22 @@ secret_set() {  # secret_set <name> <label> <comment> <token>
   opencode_run() { docker run --rm -u dev --entrypoint opencode -v "$opencode_mount" "$@"; }  # opencode_run [-it] <image> <args>
 }
 
+# Agents set up = those whose login volume exists; docker-base-image.sh installs only these.
+volume_agents() {
+  local a
+  for a in "${agents[@]}"; do
+    if docker volume inspect "$(agent_var "$a" volume)" >/dev/null 2>&1; then printf '%s ' "$a"; fi
+  done
+}
+# Agents installed in the image (label set by infra.Dockerfile), space-padded for *" <id> "* matches.
+image_agents() { printf ' %s ' "$(docker image inspect -f '{{index .Config.Labels "orca.agents"}}' "$image" 2>/dev/null)"; }
+
+require_agent_image() {  # require_agent_image <id>: for <id>-login.sh, after its volume is created
+  docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
+  [[ "$(image_agents)" == *" $1 "* ]] \
+    || { echo "$(agent_var "$1" label) is not in $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
+}
+
 # Token scoped to this repo only; never the host's broad `gh auth token`.
 git_token() { printf '%s' "${ORCA_GIT_TOKEN:-$(secret_get "$git_token_keychain_service")}"; }
 

@@ -2,6 +2,7 @@
 # Hand-run (also run by prepare.sh). Builds the project's dev image, then layers the Orca infra, the
 # repo checkout and its deps on top: the image every `create` boots. Needs no token: the checkout
 # is a clone of the local repo, so only committed files reach the image and no secret enters a build.
+# Installs only the agents set up by prepare.sh (those with a login volume).
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
@@ -16,5 +17,6 @@ rm -f "$src/.dockerignore"
 
 docker build -t "$image-dev" -f "$root/$dev_dockerfile" "$root" >&2
 docker build -t "$image" -f "$here/infra.Dockerfile" --build-context repo="$src" \
-  --build-arg DEV_IMAGE="$image-dev" --build-arg GIT_HOST="$git_host" --build-arg REPO_URL="$repo_url" \
+  --build-arg DEV_IMAGE="$image-dev" --build-arg GIT_HOST="$git_host" --build-arg AGENTS="$(volume_agents)" \
+  --build-arg REPO_URL="$repo_url" \
   --build-arg PROJECT_ROOT="$project_root" --build-arg SYNC_COMMAND="$sync_command" "$here" >&2

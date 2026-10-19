@@ -7,8 +7,8 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
-docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
 docker volume create "$cursor_volume" >/dev/null
+require_agent_image cursor
 
 check() {
   echo "Checking the Cursor Agent login in volume '$cursor_volume'..." >&2

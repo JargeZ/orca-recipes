@@ -15,13 +15,16 @@ source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
 docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
 # Agents set up by prepare.sh = those whose login volume exists. Checked first: `docker run -v` would
-# silently create an empty, logged-out volume.
+# silently create an empty, logged-out volume. The image has only the agents that had a volume at build time.
 enabled=() mounts=()
+with_volume=" $(volume_agents)" in_image="$(image_agents)"
 for a in "${agents[@]}"; do
-  if docker volume inspect "$(agent_var "$a" volume)" >/dev/null 2>&1; then
-    enabled+=("$a"); mounts+=(-v "$(agent_var "$a" mount)")
-  else
+  if [[ "$with_volume" != *" $a "* ]]; then
     echo "$(agent_var "$a" label) is not set up (no volume '$(agent_var "$a" volume)'), skipping it; orca-docker-vm/prepare.sh adds it." >&2
+  elif [[ "$in_image" != *" $a "* ]]; then
+    echo "$(agent_var "$a" label) is not in $image, skipping it; orca-docker-vm/docker-base-image.sh adds it." >&2
+  else
+    enabled+=("$a"); mounts+=(-v "$(agent_var "$a" mount)")
   fi
 done
 require_git_token

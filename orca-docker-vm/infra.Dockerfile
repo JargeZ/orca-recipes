@@ -1,6 +1,7 @@
 # check=skip=InvalidDefaultArgInFrom
 # Orca infra layered on top of the project's dev image (built from the project's dev.Dockerfile):
-# sshd + the `dev` user Orca logs in as, git/gh, task, Claude Code, Cursor Agent, OpenCode.
+# sshd + the `dev` user Orca logs in as, git/gh, task, the agents set up by prepare.sh (Claude Code,
+# Cursor Agent, OpenCode).
 # Last, the repo checkout (the `repo` build context from docker-base-image.sh) and its deps.
 ARG DEV_IMAGE
 FROM ${DEV_IMAGE}
@@ -37,19 +38,6 @@ RUN apt-get update \
 COPY git-credential-orca /usr/local/bin/git-credential-orca
 RUN git config --system "credential.https://${GIT_HOST}.helper" /usr/local/bin/git-credential-orca
 
-USER dev
-RUN curl -fsSL https://claude.ai/install.sh | bash \
-    # The shared login volume is mounted here (docker-create.sh); a new volume starts as a copy of this
-    # dir, so the first-run wizard stays skipped.
-    && mkdir -p /home/dev/.claude && echo '{"hasCompletedOnboarding": true}' > /home/dev/.claude/.claude.json \
-    # Cursor Agent CLI; login volume mounts at CURSOR_CONFIG_DIR (AGENT_CLI_CREDENTIAL_STORE=file).
-    && curl -fsSL https://cursor.com/install | bash \
-    && mkdir -p /home/dev/.config/cursor \
-    # OpenCode v2 (installs to ~/.opencode/bin); login volume mounts at its data dir (SQLite db).
-    && curl -fsSL https://opencode.ai/v2/install | bash \
-    && mkdir -p /home/dev/.local/share/opencode
-USER root
-
 # Podman (copier `podman`): containers inside the workspace, without --privileged. Rootless Podman runs as
 # dev behind a Docker API socket (docker-entrypoint.sh), docker-create.sh adds the docker run flags it
 # needs. Each step below is self-contained.
@@ -67,7 +55,8 @@ RUN echo dev:100000:65536 | tee /etc/subuid > /etc/subgid \
     && setcap cap_setuid=ep /usr/bin/newuidmap && setcap cap_setgid=ep /usr/bin/newgidmap
 
 # Storage: docker-create.sh mounts a volume here (native overlay can't nest on the container's overlay root).
-RUN install -d -o dev -g dev /home/dev/.local/share/containers /home/dev/.config /home/dev/.config/containers \
+RUN install -d -o dev -g dev /home/dev/.local /home/dev/.local/share /home/dev/.local/share/containers \
+        /home/dev/.config /home/dev/.config/containers \
     && printf '[storage]\ndriver = "overlay"\n' > /home/dev/.config/containers/storage.conf \
     && chown dev:dev /home/dev/.config/containers/storage.conf
 
@@ -82,6 +71,28 @@ ENV XDG_RUNTIME_DIR=/run/user/1000 \
     DOCKER_HOST=unix:///run/user/1000/podman/podman.sock \
     DOCKER_BUILDKIT=0
 
+# Agents with a login volume (docker-base-image.sh), listed in the orca.agents label. Late in the
+# file: a changed AGENTS rebuilds only from here.
+ARG AGENTS
+LABEL orca.agents="${AGENTS}"
+USER dev
+RUN has() { [[ " $AGENTS " == *" $1 "* ]]; }; \
+    if has claude; then \
+        curl -fsSL https://claude.ai/install.sh | bash \
+        # The shared login volume is mounted here (docker-create.sh); a new volume starts as a copy of
+        # this dir, so the first-run wizard stays skipped.
+        && mkdir -p /home/dev/.claude && echo '{"hasCompletedOnboarding": true}' > /home/dev/.claude/.claude.json; \
+    fi; \
+    if has cursor; then \
+        # Cursor Agent CLI; login volume mounts at CURSOR_CONFIG_DIR (AGENT_CLI_CREDENTIAL_STORE=file).
+        curl -fsSL https://cursor.com/install | bash && mkdir -p /home/dev/.config/cursor; \
+    fi; \
+    if has opencode; then \
+        # OpenCode v2 (installs to ~/.opencode/bin); login volume mounts at its data dir (SQLite db).
+        curl -fsSL https://opencode.ai/v2/install | bash && mkdir -p /home/dev/.local/share/opencode; \
+    fi
+USER root
+
 ENV PATH=/home/dev/.local/bin:/home/dev/.opencode/bin:$PATH \
     CLAUDE_CONFIG_DIR=/home/dev/.claude \
     CURSOR_CONFIG_DIR=/home/dev/.config/cursor \
@@ -89,7 +100,7 @@ ENV PATH=/home/dev/.local/bin:/home/dev/.opencode/bin:$PATH \
     AGENT_CLI_CREDENTIAL_STORE=file
 # SSH sessions don't inherit image ENV (including the dev image's): pam_env reads /etc/environment,
 # and login shells read profile.d after /etc/profile resets PATH.
-RUN env | grep -vE '^(HOSTNAME|HOME|PWD|SHLVL|TERM|USER|GIT_HOST|_)=' | sort > /etc/environment \
+RUN env | grep -vE '^(HOSTNAME|HOME|PWD|SHLVL|TERM|USER|GIT_HOST|AGENTS|_)=' | sort > /etc/environment \
     && while IFS= read -r kv; do printf 'export %q\n' "$kv"; done < /etc/environment > /etc/profile.d/orca-env.sh
 
 COPY docker-entrypoint.sh /usr/local/bin/orca-docker-ssh-entrypoint

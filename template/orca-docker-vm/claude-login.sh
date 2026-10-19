@@ -7,8 +7,8 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
-docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
 docker volume create "$claude_volume" >/dev/null
+require_agent_image claude
 
 check() {
   echo "Checking the Claude login in volume '$claude_volume' with a one-line request..." >&2

@@ -7,8 +7,8 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
-docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
 docker volume create "$opencode_volume" >/dev/null
+require_agent_image opencode
 
 # --standalone: a private in-process server that exits with the command, instead of the background
 # service the container would kill mid-write.
