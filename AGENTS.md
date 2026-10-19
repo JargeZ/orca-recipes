@@ -15,10 +15,10 @@ infrastructure and keeps it updatable with `copier update`.
 
 ```
 dev.Dockerfile           project-owned: base image, system packages, language toolchain, ENV
-  └─ infra.Dockerfile    template: sshd, `dev` user (uid 1000), Node for Orca's SSH relay,
-                         gh, task, Claude Code, Cursor Agent, OpenCode, git credential
-                         helper, rootless Podman + Docker CLI (optional), ENV → SSH sessions,
-                         then the repo at project_root + sync as `dev`
+  └─ infra.Dockerfile    template: sshd, `dev` user (uid 1000), gh, task, Claude Code,
+                         Cursor Agent, OpenCode, git credential helper, rootless
+                         Podman + Docker CLI (optional), ENV → SSH sessions, then
+                         the repo at project_root + sync as `dev`
           = localhost/<project_slug>-orca    (what every workspace boots from)
 ```
 
@@ -72,7 +72,7 @@ Limits compared to a real Docker host:
 
 ### `dev.Dockerfile` contract
 
-- **Debian or Ubuntu base.** The infra layer uses `apt`, and Orca's relay needs the distro's Node 18+.
+- **Debian or Ubuntu base.** The infra layer uses `apt`.
 - **Sync writes go to paths owned by uid 1000.** The sync command runs as `dev` (uid 1000). Any
   path it writes outside the checkout (a shared venv, caches) must be `chown 1000:1000` in
   `dev.Dockerfile`. If the base image already has a uid 1000 user (for example `ubuntu` in
@@ -81,8 +81,8 @@ Limits compared to a real Docker host:
   including login shells.
 - **Build context is the repo root.** `COPY` of lock files and similar works.
 
-The starter `dev.Dockerfile` targets Python + uv with a shared venv at `/opt/venv`. The shared venv
-exists because Orca checks out linked worktrees at other paths, and each of them reuses the deps
+The starter `dev.Dockerfile` targets Python + uv on `ubuntu:24.04` with a shared venv at `/opt/venv`;
+uv downloads the Python that the project needs. The shared venv exists because Orca checks out linked worktrees at other paths, and each of them reuses the deps
 baked into the image.
 
 ## Using it in a project

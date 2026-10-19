@@ -1,6 +1,6 @@
 # check=skip=InvalidDefaultArgInFrom
 # Orca infra layered on top of the project's dev image (built from the project's dev.Dockerfile):
-# sshd + the `dev` user Orca logs in as, Node for Orca's SSH relay, git/gh, task, Claude Code, Cursor Agent, OpenCode.
+# sshd + the `dev` user Orca logs in as, git/gh, task, Claude Code, Cursor Agent, OpenCode.
 # Last, the repo checkout (the `repo` build context from docker-base-image.sh) and its deps.
 ARG DEV_IMAGE
 FROM ${DEV_IMAGE}
@@ -13,8 +13,6 @@ RUN test -f /etc/debian_version || { echo "dev image must be Debian/Ubuntu-based
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         openssh-server sudo git curl ca-certificates \
-        # Orca's SSH relay needs Node 18+ with npm; it builds node-pty from source.
-        nodejs npm make g++ \
     # Current gh from the upstream repo (distro packages lag years behind).
     && curl -fsSL --create-dirs -o /etc/apt/keyrings/githubcli-archive-keyring.gpg https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
@@ -88,9 +86,7 @@ ENV PATH=/home/dev/.local/bin:/home/dev/.opencode/bin:$PATH \
     CLAUDE_CONFIG_DIR=/home/dev/.claude \
     CURSOR_CONFIG_DIR=/home/dev/.config/cursor \
     # Default keychain store is unavailable in containers; file store writes auth.json under CURSOR_CONFIG_DIR.
-    AGENT_CLI_CREDENTIAL_STORE=file \
-    # Debian's node-gyp imports the distro `gyp` module, absent from non-distro python3s.
-    npm_config_python=/usr/bin/python3
+    AGENT_CLI_CREDENTIAL_STORE=file
 # SSH sessions don't inherit image ENV (including the dev image's): pam_env reads /etc/environment,
 # and login shells read profile.d after /etc/profile resets PATH.
 RUN env | grep -vE '^(HOSTNAME|HOME|PWD|SHLVL|TERM|USER|GIT_HOST|_)=' | sort > /etc/environment \
