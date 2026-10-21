@@ -23,8 +23,9 @@ dev.Dockerfile           project-owned: base image, system packages, language to
 ```
 
 The checkout in the image is a clone of your **local** repo at `repo_ref` (committed files only),
-passed to `docker build` as a named build context. So building needs no token, and no secret ever
-enters a build step, a layer or the image config.
+placed in the `docker build` context under `repo/`. So building needs no token, no secret ever
+enters a build step, a layer or the image config, and no BuildKit is needed: `prepare.sh` also
+builds inside a workspace, through Podman.
 
 On each workspace, `docker-create.sh` does the following:
 

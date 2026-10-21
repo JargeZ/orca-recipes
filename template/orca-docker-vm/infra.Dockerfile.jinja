@@ -2,7 +2,7 @@
 # Orca infra layered on top of the project's dev image (built from the project's dev.Dockerfile):
 # sshd + the `dev` user Orca logs in as, git/gh, task, the agents set up by prepare.sh (Claude Code,
 # Cursor Agent, OpenCode).
-# Last, the repo checkout (the `repo` build context from docker-base-image.sh) and its deps.
+# Last, the repo checkout (`repo/` in the build context from docker-base-image.sh) and its deps.
 ARG DEV_IMAGE
 FROM ${DEV_IMAGE}
 ARG GIT_HOST
@@ -112,8 +112,8 @@ CMD []
 
 # Declared here, not at the top: changing them must not rebuild the infra layers above.
 ARG REPO_URL PROJECT_ROOT SYNC_COMMAND
-COPY --from=repo --chown=dev:dev . ${PROJECT_ROOT}
+COPY --chown=dev:dev repo/ ${PROJECT_ROOT}
 USER dev
 WORKDIR ${PROJECT_ROOT}
-RUN git remote set-url origin "$REPO_URL" && git checkout -q -- . && bash -lc "$SYNC_COMMAND"
+RUN git remote set-url origin "$REPO_URL" && bash -lc "$SYNC_COMMAND"
 USER root

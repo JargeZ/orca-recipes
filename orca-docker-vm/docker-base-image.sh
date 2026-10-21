@@ -8,15 +8,16 @@ set -euo pipefail
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 root="$(git -C "$here" rev-parse --show-toplevel)"
 
-src="$(mktemp -d)"
-trap 'rm -rf "$src"' EXIT
-git clone -q --branch "$repo_ref" "$root" "$src" >&2
-# BuildKit applies a context's .dockerignore to named contexts too; one excluding .git would break
-# the checkout. infra.Dockerfile restores the file from git.
-rm -f "$src/.dockerignore"
+# Build context: the files infra.Dockerfile copies, plus the clone under repo/. Not a named context
+# (--build-context): that needs BuildKit, which Podman's Docker API lacks. Only the context root's
+# .dockerignore applies, so the repo's own can't filter the checkout.
+ctx="$(mktemp -d)"
+trap 'rm -rf "$ctx"' EXIT
+cp -p "$here/docker-entrypoint.sh" "$here/git-credential-orca" "$ctx"
+git clone -q --branch "$repo_ref" "$root" "$ctx/repo" >&2
 
 docker build -t "$image-dev" -f "$root/$dev_dockerfile" "$root" >&2
-docker build -t "$image" -f "$here/infra.Dockerfile" --build-context repo="$src" \
+docker build -t "$image" -f "$here/infra.Dockerfile" \
   --build-arg DEV_IMAGE="$image-dev" --build-arg GIT_HOST="$git_host" --build-arg AGENTS="$(volume_agents)" \
   --build-arg REPO_URL="$repo_url" \
-  --build-arg PROJECT_ROOT="$project_root" --build-arg SYNC_COMMAND="$sync_command" "$here" >&2
+  --build-arg PROJECT_ROOT="$project_root" --build-arg SYNC_COMMAND="$sync_command" "$ctx" >&2
