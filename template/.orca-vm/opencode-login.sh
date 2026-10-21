@@ -32,4 +32,4 @@ Logging in to OpenCode inside a container. Pick a provider; for OAuth it prints 
 open it in your browser and approve (the browser can't reach the container, so paste back any code).
 MSG
 opencode_run -it "$image" auth login --standalone
-check || { echo "Still not logged in; rerun orca-docker-vm/prepare.sh to try again." >&2; exit 1; }
+check || { echo "Still not logged in; rerun .orca-vm/prepare.sh to try again." >&2; exit 1; }

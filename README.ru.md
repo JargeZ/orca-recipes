@@ -58,8 +58,8 @@ uvx copier copy gh:JargeZ/orca-recipes .
 >   - id: docker
 >     name: Local Docker
 >     checkoutMode: provisioned-root
->     create: ./orca-docker-vm/docker-create.sh
->     destroy: ./orca-docker-vm/docker-destroy.sh
+>     create: ./.orca-vm/docker-create.sh
+>     destroy: ./.orca-vm/docker-destroy.sh
 > ```
 
 **2. Опишите `dev.Dockerfile`** — установите в нём все зависимости, нужные для разработки проекта.
@@ -70,17 +70,17 @@ Debian/Ubuntu, пути вне репозитория, куда пишет ус�
 **3. Запустите подготовку** (безопасно для повторных запусков):
 
 ```bash
-./orca-docker-vm/prepare.sh
+./.orca-vm/prepare.sh
 ```
 
 Скрипт спросит, каких агентов настроить (Claude Code, Cursor Agent, OpenCode), настроит git-токен, соберёт базовый образ, залогинит выбранных агентов и прогонит self-test.
 Когда всё зелёное — создайте новый воркспейс через интерфейс Orca и проверьте, что он поднимается.
 
 Если что-то пошло не так — попросите агента исправить: после рендера весь код рецепта лежит
-у вас в репозитории (`orca-docker-vm/`).
+у вас в репозитории (`.orca-vm/`).
 
 > [!TIP]
-> Используете [Task](https://taskfile.dev)? Подключите `orca: ./orca-docker-vm/Taskfile.yaml` в `includes`
+> Используете [Task](https://taskfile.dev)? Подключите `orca: ./.orca-vm/Taskfile.yaml` в `includes`
 > и запускайте `task orca:setup`.
 
 ### 🔄 Обновление
@@ -89,8 +89,8 @@ Copier умеет обновлять шаблон поверх ваших изм
 рецепта можно подтянуть одной командой:
 
 ```bash
-./orca-docker-vm/update.sh                    # последний тег
-./orca-docker-vm/update.sh --vcs-ref v1.2.0   # конкретная версия
+./.orca-vm/update.sh                    # последний тег
+./.orca-vm/update.sh --vcs-ref v1.2.0   # конкретная версия
 ```
 
 `dev.Dockerfile` и `orca.yaml` при обновлении не трогаются. Подробности — в [AGENTS.md](AGENTS.md).

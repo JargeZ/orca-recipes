@@ -2,12 +2,12 @@
 # Slow, needs Docker + network: runs this repo's own recipe (`task render` first) for real - builds
 # the image, creates a workspace container, checks what an Orca SSH session gets, then destroys it.
 # create fetches repo_ref from GitHub, so the branch must be pushed.
-# Needs every agent's login volume set up (prepare.sh, or each orca-docker-vm/<agent>-login.sh).
+# Needs every agent's login volume set up (prepare.sh, or each .orca-vm/<agent>-login.sh).
 # Env: ORCA_GIT_TOKEN (default: `gh auth token`, test-only).
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 export ORCA_GIT_TOKEN="${ORCA_GIT_TOKEN:-$(gh auth token)}"
-s="$root/orca-docker-vm"
+s="$root/.orca-vm"
 source "$s/lib.sh"
 
 result=""

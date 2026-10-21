@@ -55,7 +55,7 @@ what it already did. The steps are:
 Then the workspace is `--environment <name>` in the CLI, for example
 `orca terminal create --environment <name> --worktree path:<project_root>`.
 `workspace.sh rm <name>` forgets the server, removes the SSH host and runs `docker-destroy.sh`.
-State is in `orca-docker-vm/.workspaces/<name>.json` (git-ignored).
+State is in `.orca-vm/.workspaces/<name>.json` (git-ignored).
 
 Orca sees an ordinary SSH host, not a recipe workspace: remove it with `workspace.sh rm`, not from
 the Orca UI. Orca has no CLI command to add an SSH host or manage its server, so the script calls
@@ -136,9 +136,9 @@ Copier asks the following questions:
 
 The copy creates the following files:
 
-- `orca-docker-vm/`: the recipe. It is template-owned, so change it through the template, not
+- `.orca-vm/`: the recipe. It is template-owned, so change it through the template, not
   locally.
-- `orca-docker-vm/.copier-answers.yml`: your answers and the template version.
+- `.orca-vm/.copier-answers.yml`: your answers and the template version.
 - `dev.Dockerfile` and `orca.yaml`: created only if they are missing, and never touched by updates.
   If `orca.yaml` already existed, add this recipe to it:
 
@@ -146,14 +146,14 @@ The copy creates the following files:
   environmentRecipes:
     - id: docker
       name: Local Docker
-      create: ./orca-docker-vm/docker-create.sh
-      destroy: ./orca-docker-vm/docker-destroy.sh
+      create: ./.orca-vm/docker-create.sh
+      destroy: ./.orca-vm/docker-destroy.sh
   ```
 
 Then provision:
 
 ```bash
-./orca-docker-vm/prepare.sh      # which agents? → git token → base image → agent logins → self-test
+./.orca-vm/prepare.sh      # which agents? → git token → base image → agent logins → self-test
 ```
 
 `prepare.sh` first asks `[Y/n]` for each agent (Claude Code, Cursor Agent, OpenCode); without a
@@ -178,7 +178,7 @@ If the project uses [Task](https://taskfile.dev), the same steps are available a
 
 ```yaml
 includes:
-  orca: ./orca-docker-vm/Taskfile.yaml
+  orca: ./.orca-vm/Taskfile.yaml
 ```
 
 `task orca:setup`, `orca:claude-login`, `orca:cursor-login`, `orca:opencode-login`, `orca:git-token`,
@@ -216,7 +216,7 @@ includes:
 
 ### Adding an agent
 
-Agents are listed in `agents=(...)` in `template/orca-docker-vm/lib.sh`; `prepare.sh`,
+Agents are listed in `agents=(...)` in `template/.orca-vm/lib.sh`; `prepare.sh`,
 `docker-create.sh` and `tests/e2e.sh` loop over that list. For a new agent `<id>`:
 
 1. `copier.yml`: question `<id>_volume` (default `orca-<id>`); `config.sh.jinja`: `<id>_volume=...`.
@@ -257,23 +257,29 @@ talks to the repo's host.
 Releases are git tags. In a project:
 
 ```bash
-./orca-docker-vm/update.sh                    # latest tag
-./orca-docker-vm/update.sh --vcs-ref v1.2.0   # specific version
+./.orca-vm/update.sh                    # latest tag
+./.orca-vm/update.sh --vcs-ref v1.2.0   # specific version
 ```
 
-Copier re-renders `orca-docker-vm/` and three-way merges it with your local changes. It leaves
+Copier re-renders `.orca-vm/` and three-way merges it with your local changes. It leaves
 `dev.Dockerfile` and `orca.yaml` alone. After an update that touches `infra.Dockerfile`, run
-`./orca-docker-vm/docker-base-image.sh`.
+`./.orca-vm/docker-base-image.sh`.
+
+Projects made before the recipe moved to `.orca-vm/` run the old `./orca-docker-vm/update.sh`. The
+update moves the recipe to `.orca-vm/`, but `orca.yaml` and a Taskfile `includes` still point to
+`orca-docker-vm/`. Copier prints the fix after the update: replace the path in those files, then
+remove `orca-docker-vm/` (only the git-ignored `.ssh/` key stays there; `docker-create.sh` makes a
+new one).
 
 ## Developing this template
 
-This repo uses its own template: `orca-docker-vm/`, `dev.Dockerfile` and `orca.yaml` at the root
+This repo uses its own template: `.orca-vm/`, `dev.Dockerfile` and `orca.yaml` at the root
 are rendered from `template/`, and the root `Taskfile.yaml` includes `orca:` like a project using Task.
 
 ```
 copier.yml       questions, derived values, project-owned files
 template/        rendered into projects (`.jinja` files are templated, the rest copied verbatim)
-orca-docker-vm/  this repo's own render of template/ - don't edit, run `task render`
+.orca-vm/        this repo's own render of template/ - don't edit, run `task render`
 dev.Dockerfile   this repo's dev image: uv (copier, shellcheck), jq, rsync
 tests/           render.sh (fast, offline), e2e.sh (Docker, network)
 ```

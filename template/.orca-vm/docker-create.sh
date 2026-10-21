@@ -13,16 +13,16 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
-docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
+docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run .orca-vm/docker-base-image.sh" >&2; exit 1; }
 # Agents set up by prepare.sh = those whose login volume exists. Checked first: `docker run -v` would
 # silently create an empty, logged-out volume. The image has only the agents that had a volume at build time.
 enabled=() mounts=()
 with_volume=" $(volume_agents)" in_image="$(image_agents)"
 for a in "${agents[@]}"; do
   if [[ "$with_volume" != *" $a "* ]]; then
-    echo "$(agent_var "$a" label) is not set up (no volume '$(agent_var "$a" volume)'), skipping it; orca-docker-vm/prepare.sh adds it." >&2
+    echo "$(agent_var "$a" label) is not set up (no volume '$(agent_var "$a" volume)'), skipping it; .orca-vm/prepare.sh adds it." >&2
   elif [[ "$in_image" != *" $a "* ]]; then
-    echo "$(agent_var "$a" label) is not in $image, skipping it; orca-docker-vm/docker-base-image.sh adds it." >&2
+    echo "$(agent_var "$a" label) is not in $image, skipping it; .orca-vm/docker-base-image.sh adds it." >&2
   else
     enabled+=("$a"); mounts+=(-v "$(agent_var "$a" mount)")
   fi
@@ -87,7 +87,7 @@ done
 for a in ${enabled[@]+"${enabled[@]}"}; do
   # shellcheck disable=SC2029  # the check runs remotely, as written in lib.sh
   ssh "${ssh_opts[@]}" dev@127.0.0.1 "$(agent_var "$a" check)" >&2 \
-    || { echo "$(agent_var "$a" label) is not logged in (volume '$(agent_var "$a" volume)'): run orca-docker-vm/prepare.sh" >&2; exit 1; }
+    || { echo "$(agent_var "$a" label) is not logged in (volume '$(agent_var "$a" volume)'): run .orca-vm/prepare.sh" >&2; exit 1; }
 done
 if [ "$podman" = true ]; then
   for i in $(seq 50); do

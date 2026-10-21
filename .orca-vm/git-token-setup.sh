@@ -58,5 +58,5 @@ fi
 echo "Token can write to $repo_url." >&2
 
 secret_set "$git_token_keychain_service" "Orca: $project_slug git token for Docker workspaces" \
-  "Access token scoped to $repo_url only. Written by orca-docker-vm/git-token-setup.sh; read by orca-docker-vm/docker-create.sh and passed into each $project_slug workspace container as $git_token_env for git and the $git_host CLI." \
+  "Access token scoped to $repo_url only. Written by .orca-vm/git-token-setup.sh; read by .orca-vm/docker-create.sh and passed into each $project_slug workspace container as $git_token_env for git and the $git_host CLI." \
   "$token"

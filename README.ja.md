@@ -58,8 +58,8 @@ uvx copier copy gh:JargeZ/orca-recipes .
 >   - id: docker
 >     name: Local Docker
 >     checkoutMode: provisioned-root
->     create: ./orca-docker-vm/docker-create.sh
->     destroy: ./orca-docker-vm/docker-destroy.sh
+>     create: ./.orca-vm/docker-create.sh
+>     destroy: ./.orca-vm/docker-destroy.sh
 > ```
 
 **2. `dev.Dockerfile` を記述** します。プロジェクトの開発に必要な依存関係をすべてインストールしてください。
@@ -70,17 +70,17 @@ uvx copier copy gh:JargeZ/orca-recipes .
 **3. 準備スクリプトを実行** します(何度実行しても安全です):
 
 ```bash
-./orca-docker-vm/prepare.sh
+./.orca-vm/prepare.sh
 ```
 
 どのエージェント（Claude Code、Cursor Agent、OpenCode）を設定するか確認したうえで、Git トークンの設定、ベースイメージのビルド、選んだエージェントへのログイン、セルフテストを行います。
 すべて緑になったら、Orca の UI で新しいワークスペースを作成し、起動することを確認してください。
 
 うまくいかない場合は、エージェントに修正を依頼してください。レンダリング後、レシピのコードはすべて
-あなたのリポジトリ(`orca-docker-vm/`)にあります。
+あなたのリポジトリ(`.orca-vm/`)にあります。
 
 > [!TIP]
-> [Task](https://taskfile.dev) を使っていますか? `includes` に `orca: ./orca-docker-vm/Taskfile.yaml` を追加し、
+> [Task](https://taskfile.dev) を使っていますか? `includes` に `orca: ./.orca-vm/Taskfile.yaml` を追加し、
 > `task orca:setup` を実行してください。
 
 ### 🔄 アップデート
@@ -89,8 +89,8 @@ Copier はあなたの変更の上にテンプレートを更新できる(3-way 
 コマンド 1 つで取り込めます:
 
 ```bash
-./orca-docker-vm/update.sh                    # 最新タグ
-./orca-docker-vm/update.sh --vcs-ref v1.2.0   # 特定のバージョン
+./.orca-vm/update.sh                    # 最新タグ
+./.orca-vm/update.sh --vcs-ref v1.2.0   # 特定のバージョン
 ```
 
 アップデートで `dev.Dockerfile` と `orca.yaml` が変更されることはありません。詳細は [AGENTS.md](AGENTS.md) を参照してください。

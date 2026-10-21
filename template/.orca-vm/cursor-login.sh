@@ -30,4 +30,4 @@ Logging in to Cursor Agent inside a container. Agent prints a URL: open it and a
 can't reach the container, so set NO_OPEN_BROWSER and paste/approve from the printed link).
 MSG
 cursor_run -it -e NO_OPEN_BROWSER=1 "$image" login
-check || { echo "Still not logged in; rerun orca-docker-vm/prepare.sh to try again." >&2; exit 1; }
+check || { echo "Still not logged in; rerun .orca-vm/prepare.sh to try again." >&2; exit 1; }

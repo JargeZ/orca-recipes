@@ -57,8 +57,8 @@ uvx copier copy gh:JargeZ/orca-recipes .
 >   - id: docker
 >     name: Local Docker
 >     checkoutMode: provisioned-root
->     create: ./orca-docker-vm/docker-create.sh
->     destroy: ./orca-docker-vm/docker-destroy.sh
+>     create: ./.orca-vm/docker-create.sh
+>     destroy: ./.orca-vm/docker-destroy.sh
 > ```
 
 **2. 编写 `dev.Dockerfile`** —— 在其中安装项目开发所需的全部依赖。
@@ -68,16 +68,16 @@ uvx copier copy gh:JargeZ/orca-recipes .
 **3. 运行准备脚本**(可安全地重复运行):
 
 ```bash
-./orca-docker-vm/prepare.sh
+./.orca-vm/prepare.sh
 ```
 
 它会先询问要配置哪些代理（Claude Code、Cursor Agent、OpenCode），然后配置 Git 令牌、构建基础镜像、登录所选代理并运行自检。
 全部通过后,在 Orca 界面中创建一个新工作区,确认它能正常启动。
 
-如果出了问题,请让你的智能体来修复:模板渲染后,所有配方代码都在你的仓库中(`orca-docker-vm/`)。
+如果出了问题,请让你的智能体来修复:模板渲染后,所有配方代码都在你的仓库中(`.orca-vm/`)。
 
 > [!TIP]
-> 在使用 [Task](https://taskfile.dev)?在 `includes` 中添加 `orca: ./orca-docker-vm/Taskfile.yaml`,
+> 在使用 [Task](https://taskfile.dev)?在 `includes` 中添加 `orca: ./.orca-vm/Taskfile.yaml`,
 > 然后运行 `task orca:setup`。
 
 ### 🔄 更新
@@ -85,8 +85,8 @@ uvx copier copy gh:JargeZ/orca-recipes .
 Copier 支持在你的修改之上更新模板(三方合并),因此拉取新版配方只需一条命令:
 
 ```bash
-./orca-docker-vm/update.sh                    # 最新标签
-./orca-docker-vm/update.sh --vcs-ref v1.2.0   # 指定版本
+./.orca-vm/update.sh                    # 最新标签
+./.orca-vm/update.sh --vcs-ref v1.2.0   # 指定版本
 ```
 
 更新不会改动 `dev.Dockerfile` 和 `orca.yaml`。详情见 [AGENTS.md](AGENTS.md)。

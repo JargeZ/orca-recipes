@@ -47,7 +47,7 @@ secret_set() {  # secret_set <name> <label> <comment> <token>
   echo "Saved to $(secret_where "$1")." >&2
 }
 
-# Coding agents. Each one logs in once (orca-docker-vm/<id>-login.sh, a step of prepare.sh) into its own
+# Coding agents. Each one logs in once (.orca-vm/<id>-login.sh, a step of prepare.sh) into its own
 # Docker volume shared by every workspace; docker-create.sh mounts and checks the agents whose volume
 # exists. Per agent: <id>_volume (copier.yml + config.sh.jinja), <id>_label, <id>_mount, <id>_check (a
 # login check run over SSH), <id>_run. Adding one = an entry here, <id>-login.sh, install in infra.Dockerfile.
@@ -90,9 +90,9 @@ volume_agents() {
 image_agents() { printf ' %s ' "$(docker image inspect -f '{{index .Config.Labels "orca.agents"}}' "$image" 2>/dev/null)"; }
 
 require_agent_image() {  # require_agent_image <id>: for <id>-login.sh, after its volume is created
-  docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
+  docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run .orca-vm/docker-base-image.sh" >&2; exit 1; }
   [[ "$(image_agents)" == *" $1 "* ]] \
-    || { echo "$(agent_var "$1" label) is not in $image: run orca-docker-vm/docker-base-image.sh" >&2; exit 1; }
+    || { echo "$(agent_var "$1" label) is not in $image: run .orca-vm/docker-base-image.sh" >&2; exit 1; }
 }
 
 # Token scoped to this repo only; never the host's broad `gh auth token`.
@@ -100,7 +100,7 @@ git_token() { printf '%s' "${ORCA_GIT_TOKEN:-$(secret_get "$git_token_keychain_s
 
 require_git_token() {
   token="$(git_token)"
-  [ -n "$token" ] || { echo "No git token: run orca-docker-vm/git-token-setup.sh (or set ORCA_GIT_TOKEN)" >&2; exit 1; }
+  [ -n "$token" ] || { echo "No git token: run .orca-vm/git-token-setup.sh (or set ORCA_GIT_TOKEN)" >&2; exit 1; }
   export "$git_token_env=$token"
 }
 

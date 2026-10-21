@@ -1,19 +1,25 @@
 _min_copier_version: "9.4"
 _subdirectory: template
-_answers_file: orca-docker-vm/.copier-answers.yml
+_answers_file: .orca-vm/.copier-answers.yml
 # Project-owned after the first copy: updates never touch them.
 _skip_if_exists:
   - orca.yaml
   - dev.Dockerfile
 _message_after_copy: |
-  Orca Docker recipe rendered into orca-docker-vm/.
+  Orca Docker recipe rendered into .orca-vm/.
   Next:
     1. Review {{ dev_dockerfile }} (your deps; must be Debian/Ubuntu-based).
     2. If orca.yaml already existed, add the `docker` recipe from the README.
-    3. ./orca-docker-vm/prepare.sh
+    3. ./.orca-vm/prepare.sh
 
   orca-recipes is MIT licensed: free to use, keep the credit to github.com/JargeZ/orca-recipes.
   Useful? Star the repo and follow https://github.com/JargeZ ⭐
+# Updates never touch project-owned files: after the orca-docker-vm/ -> .orca-vm/ move, say how to point them there.
+_message_after_update: |
+  The recipe is in .orca-vm/ (it was orca-docker-vm/ before). If orca.yaml or your Taskfile still
+  points to orca-docker-vm/, update them and remove the old folder:
+    grep -rl orca-docker-vm/ orca.yaml Taskfile.y*ml 2>/dev/null | xargs sed -i.bak 's#orca-docker-vm/#.orca-vm/#g'
+    rm -rf orca-docker-vm orca.yaml.bak Taskfile.y*ml.bak
 
 project_slug:
   type: str

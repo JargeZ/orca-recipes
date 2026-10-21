@@ -18,7 +18,7 @@ repo_path() { sed -E 's#^[a-z+]+://[^/]+/##; s#^[^@/]+@[^:]+:##; s#\.git$##; s#/
 origin="$(git -C "$root" remote get-url origin 2>/dev/null || true)"
 if [ -n "$origin" ] && [ "$(repo_path "$origin")" != "$(repo_path "$repo_url")" ]; then
   echo "repo_url ($repo_url) and the local origin ($origin) are different repos; Orca won't match" \
-    "workspaces to this project. Fix repo_url with orca-docker-vm/update.sh or the origin remote." >&2
+    "workspaces to this project. Fix repo_url with .orca-vm/update.sh or the origin remote." >&2
   false
 fi
 

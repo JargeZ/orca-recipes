@@ -1,8 +1,8 @@
 version: '3'
 
-# This repo runs its own template: orca-docker-vm/ is rendered from template/ (see `render`).
+# This repo runs its own template: .orca-vm/ is rendered from template/ (see `render`).
 includes:
-  orca: ./orca-docker-vm/Taskfile.yaml
+  orca: ./.orca-vm/Taskfile.yaml
 
 tasks:
   render:
@@ -10,7 +10,7 @@ tasks:
     env: {PYTHONWARNINGS: ignore::UserWarning}
     cmds:
       # recopy, not update: update refuses a dirty repo, and here template and project are one repo.
-      - uvx copier recopy --quiet --overwrite --defaults --vcs-ref HEAD -a orca-docker-vm/.copier-answers.yml
+      - uvx copier recopy --quiet --overwrite --defaults --vcs-ref HEAD -a .orca-vm/.copier-answers.yml
 
   test:
     desc: Fast offline checks - render, shellcheck, orca doctor, update keeps project files

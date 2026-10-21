@@ -29,4 +29,4 @@ Logging in to Claude inside a container. Claude prints a URL: open it, approve, 
 the browser shows back here (the browser can't reach the container, so it won't redirect).
 MSG
 claude_run -it "$image" auth login
-check || { echo "Still not logged in; rerun orca-docker-vm/prepare.sh to try again." >&2; exit 1; }
+check || { echo "Still not logged in; rerun .orca-vm/prepare.sh to try again." >&2; exit 1; }

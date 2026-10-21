@@ -3,5 +3,5 @@ environmentRecipes:
     name: Local Docker
     # One container per workspace: its checkout is the workspace (no extra "primary" entry).
     checkoutMode: provisioned-root
-    create: ./orca-docker-vm/docker-create.sh
-    destroy: ./orca-docker-vm/docker-destroy.sh
+    create: ./.orca-vm/docker-create.sh
+    destroy: ./.orca-vm/docker-destroy.sh

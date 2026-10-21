@@ -59,8 +59,8 @@ uvx copier copy gh:JargeZ/orca-recipes .
 >   - id: docker
 >     name: Local Docker
 >     checkoutMode: provisioned-root
->     create: ./orca-docker-vm/docker-create.sh
->     destroy: ./orca-docker-vm/docker-destroy.sh
+>     create: ./.orca-vm/docker-create.sh
+>     destroy: ./.orca-vm/docker-destroy.sh
 > ```
 
 **2. Write your `dev.Dockerfile`** — install everything your project needs for development.
@@ -71,21 +71,21 @@ only, and any path outside the repo that dependency installation writes to must 
 **3. Run the prepare script** (safe to rerun):
 
 ```bash
-./orca-docker-vm/prepare.sh
+./.orca-vm/prepare.sh
 ```
 
 It asks which agents to set up (Claude Code, Cursor Agent, OpenCode), sets up the git token, builds the base image, logs the chosen agents in and runs a self-test.
 Once everything is green, create a new workspace in the Orca UI and check that it comes up.
 
 If something goes wrong, ask your agent to fix it: after rendering, all the recipe code lives in
-your repository (`orca-docker-vm/`).
+your repository (`.orca-vm/`).
 
 > [!TIP]
-> Using [Task](https://taskfile.dev)? Add `orca: ./orca-docker-vm/Taskfile.yaml` to `includes`
+> Using [Task](https://taskfile.dev)? Add `orca: ./.orca-vm/Taskfile.yaml` to `includes`
 > and run `task orca:setup`.
 
 To create a workspace from a script or an agent instead of the Orca UI, use
-`./orca-docker-vm/workspace.sh add <name>` and `./orca-docker-vm/workspace.sh rm <name>`. Then use it
+`./.orca-vm/workspace.sh add <name>` and `./.orca-vm/workspace.sh rm <name>`. Then use it
 in the CLI as `--environment <name>`. See [AGENTS.md](AGENTS.md#workspaces-without-the-orca-ui).
 
 ### 🔄 Updating
@@ -94,8 +94,8 @@ Copier updates the template on top of your changes (three-way merge), so pulling
 the recipe is one command:
 
 ```bash
-./orca-docker-vm/update.sh                    # latest tag
-./orca-docker-vm/update.sh --vcs-ref v1.2.0   # specific version
+./.orca-vm/update.sh                    # latest tag
+./.orca-vm/update.sh --vcs-ref v1.2.0   # specific version
 ```
 
 Updates never touch `dev.Dockerfile` or `orca.yaml`. Details are in [AGENTS.md](AGENTS.md).

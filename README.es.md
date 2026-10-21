@@ -58,8 +58,8 @@ uvx copier copy gh:JargeZ/orca-recipes .
 >   - id: docker
 >     name: Local Docker
 >     checkoutMode: provisioned-root
->     create: ./orca-docker-vm/docker-create.sh
->     destroy: ./orca-docker-vm/docker-destroy.sh
+>     create: ./.orca-vm/docker-create.sh
+>     destroy: ./.orca-vm/docker-destroy.sh
 > ```
 
 **2. Escribe tu `dev.Dockerfile`** — instala en él todas las dependencias necesarias para desarrollar el proyecto.
@@ -70,17 +70,17 @@ y cualquier ruta fuera del repositorio en la que escriba la instalación de depe
 **3. Ejecuta el script de preparación** (se puede volver a ejecutar sin riesgo):
 
 ```bash
-./orca-docker-vm/prepare.sh
+./.orca-vm/prepare.sh
 ```
 
 Pregunta qué agentes configurar (Claude Code, Cursor Agent, OpenCode), configura el token de git, construye la imagen base, inicia sesión en los agentes elegidos y ejecuta un autotest.
 Cuando todo esté en verde, crea un nuevo workspace desde la interfaz de Orca y comprueba que arranca.
 
 Si algo sale mal, pide a tu agente que lo arregle: tras el renderizado, todo el código de la receta
-está en tu repositorio (`orca-docker-vm/`).
+está en tu repositorio (`.orca-vm/`).
 
 > [!TIP]
-> ¿Usas [Task](https://taskfile.dev)? Añade `orca: ./orca-docker-vm/Taskfile.yaml` en `includes`
+> ¿Usas [Task](https://taskfile.dev)? Añade `orca: ./.orca-vm/Taskfile.yaml` en `includes`
 > y ejecuta `task orca:setup`.
 
 ### 🔄 Actualización
@@ -89,8 +89,8 @@ Copier actualiza la plantilla por encima de tus cambios (merge a tres bandas), a
 versión de la receta es un solo comando:
 
 ```bash
-./orca-docker-vm/update.sh                    # última etiqueta
-./orca-docker-vm/update.sh --vcs-ref v1.2.0   # versión concreta
+./.orca-vm/update.sh                    # última etiqueta
+./.orca-vm/update.sh --vcs-ref v1.2.0   # versión concreta
 ```
 
 Las actualizaciones nunca tocan `dev.Dockerfile` ni `orca.yaml`. Más detalles en [AGENTS.md](AGENTS.md).
