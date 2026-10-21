@@ -1,2 +1,4 @@
 # per-workspace SSH key
 .ssh/
+# workspace.sh state (one JSON per workspace)
+.workspaces/

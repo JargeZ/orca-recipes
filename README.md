@@ -84,6 +84,10 @@ your repository (`orca-docker-vm/`).
 > Using [Task](https://taskfile.dev)? Add `orca: ./orca-docker-vm/Taskfile.yaml` to `includes`
 > and run `task orca:setup`.
 
+To create a workspace from a script or an agent instead of the Orca UI, use
+`./orca-docker-vm/workspace.sh add <name>` and `./orca-docker-vm/workspace.sh rm <name>`. Then use it
+in the CLI as `--environment <name>`. See [AGENTS.md](AGENTS.md#workspaces-without-the-orca-ui).
+
 ### 🔄 Updating
 
 Copier updates the template on top of your changes (three-way merge), so pulling a new version of

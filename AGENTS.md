@@ -40,6 +40,30 @@ On each workspace, `docker-create.sh` does the following:
 
 `docker-destroy.sh` removes the container, its Podman storage volume and its `known_hosts` entry.
 
+### Workspaces without the Orca UI
+
+`workspace.sh add <name> [branch]` creates a workspace from a script or an agent. It is
+non-interactive: a missing prerequisite or a failed step stops it with a message, and it rolls back
+what it already did. The steps are:
+
+1. Runs `docker-create.sh` (schema 2, `ORCA_REPO_BRANCH` = `branch`, default `<name>`, from `repo_ref`).
+2. Adds the container to Orca as an SSH host named `<name>` and connects. Orca installs its managed
+   server (orcad) and its own Node in `~/.orca-remote` on the container.
+3. Adds the checkout at `project_root` as the project's workspace on that server
+   (`orca project setup-existing-folder`).
+
+Then the workspace is `--environment <name>` in the CLI, for example
+`orca terminal create --environment <name> --worktree path:<project_root>`.
+`workspace.sh rm <name>` forgets the server, removes the SSH host and runs `docker-destroy.sh`.
+State is in `orca-docker-vm/.workspaces/<name>.json` (git-ignored).
+
+Orca sees an ordinary SSH host, not a recipe workspace: remove it with `workspace.sh rm`, not from
+the Orca UI. Orca has no CLI command to add an SSH host or manage its server, so the script calls
+the runtime RPC that the `orca` CLI uses (`ssh.addTarget`, `ssh.connect`, `managedServer.forget`,
+`ssh.removeTarget`) through Orca's own client. These methods are internal to Orca and can change in
+any release. The script finds Orca from the CLI on `PATH`: `orca` (macOS) or `orca-ide` (Linux).
+If it does not find the app binary, set `ORCA_APP_EXECUTABLE`.
+
 ### Containers inside a workspace
 
 With the copier answer `podman` (default `true`), agents get `docker run`, `docker build` and
