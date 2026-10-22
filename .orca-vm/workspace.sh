@@ -77,7 +77,7 @@ add() {
   # Orca's project id for repo_url: an existing project with this remote, else Orca's own spelling.
   repo="${repo_url#https://}"; repo="${repo%.git}"
   project="$(orca project list --json | jq -r --arg k "$repo" \
-    'first(.result.projects[] | select(.gitRemoteIdentity.canonicalKey? | ascii_downcase == ($k | ascii_downcase)) | .id) // empty')"
+    'first(.result.projects[] | select(.gitRemoteIdentity.canonicalKey? // "" | ascii_downcase == ($k | ascii_downcase)) | .id) // empty')"
   if [ -z "$project" ]; then
     case "$repo" in github.com/*) project="github:${repo#github.com/}" ;; *) project="git:$repo" ;; esac
     project="$(tr '[:upper:]' '[:lower:]' <<<"$project")"
