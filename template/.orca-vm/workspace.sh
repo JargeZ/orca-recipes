@@ -23,11 +23,16 @@ state_dir="$here/.workspaces"
 state="$state_dir/$name.json"
 
 # The orca CLI (find_orca in lib.sh). It is a launcher in <resources>/bin, often behind a symlink
-# (/usr/local/bin/orca).
+# (/usr/local/bin/orca). The Linux AppImage registers a stable launcher script instead
+# (~/.cache/orca/appimage/launcher/orca-ide) that execs its sibling symlink `installed`.
 orca_cli="$(find_orca)" || exit 1
 orca() { "$orca_cli" "$@"; }
 p="$orca_cli"
-while [ -L "$p" ]; do l="$(readlink "$p")"; [[ "$l" = /* ]] && p="$l" || p="$(dirname "$p")/$l"; done
+while :; do
+  if [ -L "$p" ]; then l="$(readlink "$p")"; [[ "$l" = /* ]] && p="$l" || p="$(dirname "$p")/$l"
+  elif [ -L "$(dirname "$p")/installed" ]; then p="$(dirname "$p")/installed"
+  else break; fi
+done
 orca_res="$(cd "$(dirname "$p")/.." && pwd)"
 # Orca's own runtime client, run on the app's Electron as Node, as the launcher does. The app binary:
 # Orca.app/Contents/MacOS/Orca on macOS, next to resources/ on Linux.
