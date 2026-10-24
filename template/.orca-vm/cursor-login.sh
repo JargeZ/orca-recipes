@@ -2,10 +2,11 @@
 # Hand-run (also a step of prepare.sh; FORCE=1 to log in again): signs Cursor Agent in once, inside a
 # container, into the named volume every workspace mounts at CURSOR_CONFIG_DIR. Uses the file
 # credential store (AGENT_CLI_CREDENTIAL_STORE=file); nothing is taken from the host Cursor login.
-# Idempotent: checks auth status and only asks you to log in when that fails.
+# --yes (and no terminal) only checks, never logs in. Idempotent: checks auth status and only asks you to log in when that fails.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
+parse_yes "$@"
 
 ensure_volume "$cursor_volume"
 require_agent_image cursor
@@ -22,7 +23,8 @@ check() {
   fi
 }
 
-if [ -z "${FORCE:-}" ] && check; then exit 0; fi
+if { [ -z "${FORCE:-}" ] || [ -n "$yes" ]; } && check; then exit 0; fi
+[ -z "$yes" ] || needs_person "$cursor_label is not logged in: run .orca-vm/cursor-login.sh on $(hostname)"
 
 cat >&2 <<MSG
 

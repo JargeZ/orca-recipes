@@ -52,4 +52,8 @@ grep -q '# mine' "$tmp/gh/dev.Dockerfile" || fail "update clobbered dev.Dockerfi
    && [ "$(stat -c %a "$(secret_file t-orca)" 2>/dev/null || stat -f %Lp "$(secret_file t-orca)")" = 600 ]) \
   || fail "file secret store"
 
+# prepare.sh: an unknown flag stops it with usage, before any step (it used to be ignored).
+out="$("$root/.orca-vm/prepare.sh" --bogus </dev/null 2>&1)" && fail "prepare.sh --bogus passed"
+grep -q Usage <<<"$out" || fail "prepare.sh --bogus printed no usage"
+
 echo "render: ok"

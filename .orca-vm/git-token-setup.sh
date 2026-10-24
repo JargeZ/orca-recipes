@@ -1,14 +1,34 @@
 #!/usr/bin/env bash
 # Hand-run once (and again when the token expires): stores a git token scoped to this repo only
 # in the host keyring (see secret_store in lib.sh), where the docker-*.sh scripts read it.
+# --yes only checks the token. A set ORCA_GIT_TOKEN is only checked, the keyring is not used.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
+parse_yes "$@"
 
-if [ -z "${FORCE:-}" ] && [ -n "$(secret_get "$git_token_keychain_service")" ]; then
+# A dry-run push authenticates even on a public or empty repo (ls-remote does neither) and needs
+# write access. Global config ignored: its credential helpers or insteadOf rewrites could mask a bad token.
+# shellcheck disable=SC2016  # the helper expands the token itself
+can_push() {  # can_push <token>
+  ORCA_GIT_TOKEN="$1" GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 git -C "$here" \
+    -c credential.helper= -c 'credential.helper=!f() { printf "username=x-access-token\npassword=%s\n" "$ORCA_GIT_TOKEN"; }; f' \
+    push -q --dry-run "$repo_url" HEAD:refs/heads/orca-token-check >/dev/null
+}
+
+# ORCA_GIT_TOKEN overrides the keyring everywhere, so only check it.
+if [ -n "${ORCA_GIT_TOKEN:-}" ]; then
+  can_push "$ORCA_GIT_TOKEN" \
+    || needs_person "ORCA_GIT_TOKEN can't push to $repo_url (see git's error above): give it write access or replace it"
+  echo "ORCA_GIT_TOKEN can write to $repo_url (keyring not used)." >&2
+  exit 0
+fi
+
+if { [ -z "${FORCE:-}" ] || [ -n "$yes" ]; } && [ -n "$(secret_get "$git_token_keychain_service")" ]; then
   echo "Git token already in $(secret_where "$git_token_keychain_service"); FORCE=1 to replace." >&2
   exit 0
 fi
+[ -z "$yes" ] || needs_person "No git token in $(secret_where "$git_token_keychain_service"): run .orca-vm/git-token-setup.sh on $(hostname), or set ORCA_GIT_TOKEN"
 
 repo="$(sed -E 's#^https://[^/]+/##; s#\.git$##' <<<"$repo_url")"
 case "$git_host" in
@@ -46,12 +66,7 @@ esac
 read -rsp "Paste the token: " token
 echo
 [ -n "$token" ] || { echo "Empty token, nothing saved" >&2; exit 1; }
-# A dry-run push authenticates even on a public or empty repo (ls-remote does neither) and needs
-# write access. Global config ignored: its credential helpers or insteadOf rewrites could mask a bad token.
-# shellcheck disable=SC2016  # the helper expands the token itself
-if ! ORCA_GIT_TOKEN="$token" GIT_CONFIG_GLOBAL=/dev/null GIT_TERMINAL_PROMPT=0 git -C "$here" \
-  -c credential.helper= -c 'credential.helper=!f() { printf "username=x-access-token\npassword=%s\n" "$ORCA_GIT_TOKEN"; }; f' \
-  push -q --dry-run "$repo_url" HEAD:refs/heads/orca-token-check >/dev/null; then
+if ! can_push "$token"; then
   echo "Token can't push to $repo_url (see git's error above), nothing saved" >&2
   exit 1
 fi

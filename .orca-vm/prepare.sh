@@ -3,13 +3,32 @@
 # Asks which agents to set up, then: git token → base image → each chosen agent's login → end-to-end
 # self-test (real create + destroy). Every step checks first and only asks for input when something is
 # missing or broken, so rerunning it is how you fix things.
+# Unattended (meta): prepare.sh --yes --agents claude. See parse_yes in lib.sh.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 root="$(git -C "$here" rev-parse --show-toplevel)"
 
-n=0
-trap 'echo "prepare.sh: failed at step $n, see the output above" >&2' ERR
+usage() {
+  echo "Usage: $0 [--yes] [--agents <id>[,<id>...]]   agents: ${agents[*]}" >&2
+  echo "  --yes     no questions; steps that need a person only check (default without a terminal)" >&2
+  echo "  --agents  set up only these agents (default: ask for each; all with --yes)" >&2
+  exit 2
+}
+want=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --yes) yes=1 ;;
+    --agents) [ -n "${2:-}" ] || usage; want="$2"; shift ;;
+    *) usage ;;
+  esac
+  shift
+done
+[ -t 0 ] || yes=1
+
+n=0 title=""
+# Exit code 3 = needs_person: its hint must stay the last stderr line.
+trap '[ $? = 3 ] || echo "prepare.sh: failed at step $n ($title), see the output above" >&2' ERR
 
 # Orca matches a workspace's checkout (origin = repo_url) to the project by owner/repo; a mismatch
 # with the local origin fails with "Imported folder does not match the selected project identity".
@@ -22,29 +41,38 @@ if [ -n "$origin" ] && [ "$(repo_path "$origin")" != "$(repo_path "$repo_url")" 
   false
 fi
 
-# Asked up front so the long steps run unattended. Without a terminal every agent is set up.
+# Asked up front so the long steps run unattended. --agents or --yes skip the questions.
 chosen=()
-for a in "${agents[@]}"; do
-  label="$(agent_var "$a" label)" volume="$(agent_var "$a" volume)"
-  ans=y
-  [ ! -t 0 ] || read -r -p "Set up $label in workspaces? [Y/n] " ans
-  case "$ans" in
-    # An existing volume still enables the agent in workspaces, so its login is checked anyway.
-    [nN]*) if docker volume inspect "$volume" >/dev/null 2>&1; then
-        chosen+=("$a")
-        echo "  Volume '$volume' already exists, so workspaces still use $label; \`docker volume rm $volume\` drops it." >&2
-      fi ;;
-    *) chosen+=("$a")
-      # The volume marks the agent as set up: the base image installs only those agents.
-      ensure_volume "$volume" ;;
-  esac
-done
+if [ -n "$want" ]; then
+  IFS=, read -ra chosen <<<"$want"
+  for a in "${chosen[@]}"; do
+    [[ " ${agents[*]} " == *" $a "* ]] || { echo "Unknown agent '$a' in --agents; known: ${agents[*]}" >&2; exit 2; }
+  done
+  # Agents not in the list are not set up or checked, and their volumes stay as they are.
+  for a in "${chosen[@]}"; do ensure_volume "$(agent_var "$a" volume)"; done
+else
+  for a in "${agents[@]}"; do
+    label="$(agent_var "$a" label)" volume="$(agent_var "$a" volume)"
+    ans=y
+    [ -n "$yes" ] || read -r -p "Set up $label in workspaces? [Y/n] " ans
+    case "$ans" in
+      # An existing volume still enables the agent in workspaces, so its login is checked anyway.
+      [nN]*) if docker volume inspect "$volume" >/dev/null 2>&1; then
+          chosen+=("$a")
+          echo "  Volume '$volume' already exists, so workspaces still use $label; \`docker volume rm $volume\` drops it." >&2
+        fi ;;
+      *) chosen+=("$a")
+        # The volume marks the agent as set up: the base image installs only those agents.
+        ensure_volume "$volume" ;;
+    esac
+  done
+fi
 
 total=$((3 + ${#chosen[@]}))
-step() { n=$((n + 1)); printf '\n==> [%s/%s] %s\n' "$n" "$total" "$1" >&2; }
+step() { n=$((n + 1)) title="$1"; printf '\n==> [%s/%s] %s\n' "$n" "$total" "$1" >&2; }
 
 step "Git token (keyring)"
-"$here/git-token-setup.sh"
+"$here/git-token-setup.sh" ${yes:+--yes}
 
 step "Base image (docker build)"
 "$here/docker-base-image.sh"
@@ -52,7 +80,7 @@ echo "Image built." >&2
 
 for a in ${chosen[@]+"${chosen[@]}"}; do
   step "$(agent_var "$a" label) login (shared Docker volume)"
-  "$here/$a-login.sh"
+  "$here/$a-login.sh" ${yes:+--yes}
 done
 
 step "orca vm recipe doctor: real create + destroy of a workspace (takes a minute)"

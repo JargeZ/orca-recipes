@@ -79,6 +79,20 @@ secret_set() {  # secret_set <name> <label> <comment> <token>
   opencode_run() { docker run --rm -u dev --entrypoint opencode -v "$opencode_mount" "$@"; }  # opencode_run [-it] <image> <args>
 }
 
+# Unattended mode (--yes, or stdin is not a terminal): no prompts and no `docker run -it`. A step that
+# needs a person (agent login, git token) fails with exit code 3, and the last stderr line says what
+# to run by hand: callers such as meta show only that line.
+yes=""
+# shellcheck disable=SC2034  # yes is read by the sourcing script
+parse_yes() {  # parse_yes "$@": for scripts whose only flag is --yes
+  local arg
+  for arg; do
+    case "$arg" in --yes) yes=1 ;; *) echo "Usage: $0 [--yes]" >&2; exit 2 ;; esac
+  done
+  [ -t 0 ] || yes=1
+}
+needs_person() { echo "$1" >&2; exit 3; }  # needs_person <what is wrong: what to run>
+
 # The host's `docker` is Podman (podman-docker or a wrapper script), not Docker Engine.
 host_is_podman() { docker --version 2>/dev/null | grep -qi podman; }
 

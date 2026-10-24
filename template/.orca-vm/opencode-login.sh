@@ -2,10 +2,11 @@
 # Hand-run (also a step of prepare.sh; FORCE=1 to log in again): signs OpenCode v2 in once, inside a
 # container, into the named volume every workspace mounts at OpenCode's data dir. v2 keeps credentials
 # in its SQLite db there (not auth.json); nothing is taken from the host OpenCode login.
-# Idempotent: checks for a saved integration and only asks you to log in when there is none.
+# --yes (and no terminal) only checks, never logs in. Idempotent: checks for a saved integration and only asks you to log in when there is none.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
+parse_yes "$@"
 
 ensure_volume "$opencode_volume"
 require_agent_image opencode
@@ -24,7 +25,8 @@ check() {
   fi
 }
 
-if [ -z "${FORCE:-}" ] && check; then exit 0; fi
+if { [ -z "${FORCE:-}" ] || [ -n "$yes" ]; } && check; then exit 0; fi
+[ -z "$yes" ] || needs_person "$opencode_label is not logged in: run .orca-vm/opencode-login.sh on $(hostname)"
 
 cat >&2 <<MSG
 

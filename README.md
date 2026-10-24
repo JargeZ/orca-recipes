@@ -75,6 +75,7 @@ only, and any path outside the repo that dependency installation writes to must 
 ```
 
 It asks which agents to set up (Claude Code, Cursor Agent, OpenCode), sets up the git token, builds the base image, logs the chosen agents in and runs a self-test.
+Without a person (CI, a worker): `./.orca-vm/prepare.sh --yes --agents claude` only checks, see [AGENTS.md](AGENTS.md#unattended-runs).
 Once everything is green, create a new workspace in the Orca UI and check that it comes up.
 
 If something goes wrong, ask your agent to fix it: after rendering, all the recipe code lives in

@@ -162,20 +162,38 @@ Then provision:
 ./.orca-vm/prepare.sh      # which agents? → git token → base image → agent logins → self-test
 ```
 
-`prepare.sh` first asks `[Y/n]` for each agent (Claude Code, Cursor Agent, OpenCode); without a
-terminal it sets up all of them. For each chosen agent it creates the login volume. The image
+`prepare.sh` first asks `[Y/n]` for each agent (Claude Code, Cursor Agent, OpenCode); `--agents
+claude,cursor` replaces the questions, and agents not in the list are not set up or checked. For each chosen agent it creates the login volume. The image
 installs and workspaces mount only the agents whose login volume exists, so answering `n` for an
 agent already set up does not remove it (`docker volume rm` and a rebuild do), and its login is still checked. Then it runs the individual scripts in order and says what each step does. Every step checks
 first and only asks for input when something is missing or broken, so if anything breaks later (an
 expired token, a logged-out agent), rerunning `prepare.sh` fixes it.
 
+### Unattended runs
+
+For callers without a person, such as meta's worker:
+
+```bash
+ORCA_GIT_TOKEN=<token> ./.orca-vm/prepare.sh --yes --agents claude
+```
+
+`--yes` (also when stdin is not a terminal) asks nothing and never runs `docker run -it`. Without
+`--agents` it sets up all agents. The steps that need a person become checks: `git-token-setup.sh`
+and `<id>-login.sh` take `--yes` too. When a check fails, the script exits with code 3 and the last
+stderr line says what is wrong and what to run by hand, for example `Claude Code is not logged in:
+run .orca-vm/claude-login.sh on <host>`. Other failures exit with a different non-zero code. The
+token is never printed. An unknown flag stops `prepare.sh` with usage.
+
+A set `ORCA_GIT_TOKEN` is checked with `git push --dry-run` and the keyring is not used, also
+without `--yes`.
+
 | Script | What it does |
 |---|---|
-| `git-token-setup.sh` | Prints where to create a repo-scoped token, verifies it with a `git push --dry-run`, saves it to the keyring (`FORCE=1` to replace) |
+| `git-token-setup.sh` | Prints where to create a repo-scoped token, verifies it with a `git push --dry-run`, saves it to the keyring (`FORCE=1` to replace; `--yes` or a set `ORCA_GIT_TOKEN`: check only) |
 | `docker-base-image.sh` | Rebuilds the image with the agents that have a login volume; rerun after `dev.Dockerfile`, dependency or agent changes |
-| `claude-login.sh` | Checks the Claude login with a one-line request; if it fails, runs `claude auth login` in a container (`FORCE=1` to redo) |
-| `cursor-login.sh` | Checks Cursor Agent auth status; if it fails, runs `agent login` in a container (`FORCE=1` to redo) |
-| `opencode-login.sh` | Checks OpenCode has a saved integration (`auth list`); if not, runs `opencode auth login` in a container (`FORCE=1` to redo) |
+| `claude-login.sh` | Checks the Claude login with a one-line request; if it fails, runs `claude auth login` in a container (`FORCE=1` to redo, `--yes`: check only) |
+| `cursor-login.sh` | Checks Cursor Agent auth status; if it fails, runs `agent login` in a container (`FORCE=1` to redo, `--yes`: check only) |
+| `opencode-login.sh` | Checks OpenCode has a saved integration (`auth list`); if not, runs `opencode auth login` in a container (`FORCE=1` to redo, `--yes`: check only) |
 | `update.sh` | `copier update` to the latest template; pin with `--vcs-ref v1.2.0` |
 
 The last step of `prepare.sh` is `orca vm recipe doctor docker --provision`: a real create + destroy.

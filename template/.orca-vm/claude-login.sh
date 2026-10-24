@@ -2,10 +2,11 @@
 # Hand-run (also step 3 of prepare.sh; FORCE=1 to log in again): signs Claude Code in once, inside a
 # container, into the named volume every workspace mounts at CLAUDE_CONFIG_DIR - how Anthropic's dev
 # container guide persists auth. Claude Code refreshes that login itself; nothing is stored on the host.
-# Idempotent: checks the login with a real request and only asks you to log in when that fails.
+# --yes (and no terminal) only checks, never logs in. Idempotent: checks the login with a real request and only asks you to log in when that fails.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
+parse_yes "$@"
 
 ensure_volume "$claude_volume"
 require_agent_image claude
@@ -21,7 +22,8 @@ check() {
   fi
 }
 
-if [ -z "${FORCE:-}" ] && check; then exit 0; fi
+if { [ -z "${FORCE:-}" ] || [ -n "$yes" ]; } && check; then exit 0; fi
+[ -z "$yes" ] || needs_person "$claude_label is not logged in: run .orca-vm/claude-login.sh on $(hostname)"
 
 cat >&2 <<MSG
 
