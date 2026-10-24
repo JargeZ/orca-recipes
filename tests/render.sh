@@ -16,8 +16,8 @@ for p in "$root" "$tmp/gh" "$tmp/gl" "$tmp/np"; do
   ls "$p"/.orca-vm/*.jinja >/dev/null 2>&1 && fail "$p: unrendered .jinja left"
   (source "$p/.orca-vm/lib.sh"; [ "$image" = "localhost/$project_slug-orca" ]) || fail "$p: config.sh does not source"
   (cd "$p/.orca-vm" && uvx --from shellcheck-py shellcheck -x -P SCRIPTDIR ./*.sh git-credential-orca)
-  if command -v orca >/dev/null; then
-    orca vm recipe doctor docker --repo-path "$p" --json \
+  if orca_cli="$(source "$root/.orca-vm/lib.sh" && find_orca 2>/dev/null)"; then
+    "$orca_cli" vm recipe doctor docker --repo-path "$p" --json \
       | jq -e '.ok and ([.. | objects | select(.status? == "warn" or .status? == "fail")] | length == 0)' >/dev/null \
       || fail "$p: orca doctor reported warn/fail"
   fi

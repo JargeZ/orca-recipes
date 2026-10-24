@@ -30,6 +30,9 @@ n=0 title=""
 # Exit code 3 = needs_person: its hint must stay the last stderr line.
 trap '[ $? = 3 ] || echo "prepare.sh: failed at step $n ($title), see the output above" >&2' ERR
 
+# Found before the long steps: the last one (doctor) needs it.
+orca_cli="$(find_orca)" || exit 1
+
 # Orca matches a workspace's checkout (origin = repo_url) to the project by owner/repo; a mismatch
 # with the local origin fails with "Imported folder does not match the selected project identity".
 # Host is ignored so SSH aliases (git@github-work:...) still match.
@@ -84,7 +87,7 @@ for a in ${chosen[@]+"${chosen[@]}"}; do
 done
 
 step "orca vm recipe doctor: real create + destroy of a workspace (takes a minute)"
-report="$(orca vm recipe doctor docker --repo-path "$root" --provision --json || true)"
+report="$("$orca_cli" vm recipe doctor docker --repo-path "$root" --provision --json || true)"
 if ! jq -e '.ok' >/dev/null 2>&1 <<<"$report"; then
   echo "Doctor reported a problem:" >&2
   jq . <<<"$report" >&2 2>/dev/null || echo "$report" >&2

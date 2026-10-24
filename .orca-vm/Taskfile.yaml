@@ -40,7 +40,8 @@ tasks:
   check:
     desc: End-to-end self-test of the docker recipe (create + destroy)
     cmds:
-      - orca vm recipe doctor docker --repo-path "{{.ROOT_DIR}}" --provision --json | jq -e '.ok' >/dev/null
+      # bash: lib.sh needs BASH_SOURCE, which Task's own shell does not set.
+      - bash -c 'source "$0/lib.sh" && "$(find_orca)" vm recipe doctor docker --repo-path "$1" --provision --json' '{{.TASKFILE_DIR}}' '{{.ROOT_DIR}}' | jq -e '.ok' >/dev/null
 
   update:
     desc: Pull the latest recipe template (copier 3-way merge); extra args after --, e.g. `-- --vcs-ref v1.2.0`

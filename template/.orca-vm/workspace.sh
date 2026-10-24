@@ -22,9 +22,9 @@ for c in jq docker; do command -v "$c" >/dev/null || die "'$c' is not on PATH"; 
 state_dir="$here/.workspaces"
 state="$state_dir/$name.json"
 
-# The orca CLI: `orca` on macOS, `orca-ide` on Linux. It is a launcher in <resources>/bin, often
-# behind a symlink (/usr/local/bin/orca).
-orca_cli="$(command -v orca || command -v orca-ide)" || die "neither 'orca' nor 'orca-ide' is on PATH: install the Orca CLI from Orca's settings"
+# The orca CLI (find_orca in lib.sh). It is a launcher in <resources>/bin, often behind a symlink
+# (/usr/local/bin/orca).
+orca_cli="$(find_orca)" || exit 1
 orca() { "$orca_cli" "$@"; }
 p="$orca_cli"
 while [ -L "$p" ]; do l="$(readlink "$p")"; [[ "$l" = /* ]] && p="$l" || p="$(dirname "$p")/$l"; done

@@ -96,6 +96,17 @@ needs_person() { echo "$1" >&2; exit 3; }  # needs_person <what is wrong: what t
 # The host's `docker` is Podman (podman-docker or a wrapper script), not Docker Engine.
 host_is_podman() { docker --version 2>/dev/null | grep -qi podman; }
 
+# The Orca CLI: `orca` on macOS, `orca-ide` on Linux. On Linux `orca` can be the GNOME screen reader
+# or a launcher left over from an old AppImage, so orca-ide goes first and the CLI must run.
+find_orca() {  # prints the CLI's path, or fails
+  local c
+  for c in orca-ide orca; do
+    if command -v "$c" >/dev/null && "$c" --version >/dev/null 2>&1; then command -v "$c"; return; fi
+  done
+  echo "No working Orca CLI ('orca' on macOS, 'orca-ide' on Linux) on PATH: install it from Orca's settings" >&2
+  return 1
+}
+
 # Podman's `volume create` fails on an existing volume; Docker's is a no-op.
 ensure_volume() { docker volume inspect "$1" >/dev/null 2>&1 || docker volume create "$1" >/dev/null; }
 
