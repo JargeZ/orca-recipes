@@ -84,7 +84,8 @@ host kernel, where every other container and the agent login volumes live.
 SELinux labels the container `container_t`, which is denied `/dev/net/tun`: it runs as
 `label=type:container_engine_t` instead, SELinux's type for nested engines, which keeps its MCS
 categories. That type can't exec the host's `--init` binary, so the image's `catatonit` is the
-entrypoint there; on Docker hosts `--init` stays (Docker Engine sets no SELinux labels by default). It also adds an anonymous volume at
+entrypoint there; on Docker hosts `--init` stays (Docker Engine sets no SELinux labels by default). It also passes `--network bridge`: a Podman host whose `containers.conf` sets `netns="host"` (as in
+`quay.io/podman/stable`) otherwise drops `-p` and gives every workspace the host's network. It also adds an anonymous volume at
 `~/.local/share/containers`, because native overlay can't nest on the container's overlay root.
 `newuidmap`/`newgidmap` run with file caps instead of setuid, as in `quay.io/podman/stable`: a setuid
 one runs as root, not as the user namespace's owner, and gets EPERM without `CAP_SYS_ADMIN`.

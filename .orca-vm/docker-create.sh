@@ -59,15 +59,20 @@ if [ "$podman" = true ]; then
     run_opts+=(--init)
   fi
 fi
-docker run -d --name "$name" -p 127.0.0.1::22 ${run_opts[@]+"${run_opts[@]}"} ${mounts[@]+"${mounts[@]}"} \
+# An explicit network: a host default of netns="host" (containers.conf in quay.io/podman/stable-like
+# hosts) drops -p and shares one network between all workspaces. Docker and Podman both accept bridge.
+docker run -d --name "$name" --network bridge -p 127.0.0.1::22 ${run_opts[@]+"${run_opts[@]}"} ${mounts[@]+"${mounts[@]}"} \
   -e "ORCA_SSH_PUBLIC_KEY=$(cat "$key.pub")" "$image" ${cmd[@]+"${cmd[@]}"} >&2
-port="$(docker port "$name" 22/tcp | head -1 | sed 's/.*://')"
 
-host_key=""
+port="" host_key=""
 for _ in $(seq 50); do
-  host_key="$(docker exec "$name" cat /etc/ssh/ssh_host_ed25519_key.pub 2>/dev/null | cut -d' ' -f1,2)" && [ -n "$host_key" ] && break
+  port="$(docker port "$name" 22/tcp 2>/dev/null | head -1 | sed 's/.*://')"
+  host_key="$(docker exec "$name" cat /etc/ssh/ssh_host_ed25519_key.pub 2>/dev/null | cut -d' ' -f1,2)" || true
+  [ -z "$port" ] || [ -z "$host_key" ] || break
   sleep 0.2
 done
+[ -n "$port" ] || { echo "SSH port 22 of $name is not published on the host (network mode:" \
+  "$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$name" 2>&1)); check the engine's network config" >&2; exit 1; }
 [ -n "$host_key" ] || { echo "container never generated an SSH host key" >&2; exit 1; }
 
 # Host key read via trusted `docker exec`, so replacing a reused port's entry is safe.
@@ -91,8 +96,10 @@ docker exec -i -u dev "$name" bash -s <<<"$(sync_script)" >&2 \
 
 # Checks what an Orca session actually gets: SSH login env, each agent's auth, git auth.
 ssh_opts=(-i "$key" -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes)
-for _ in $(seq 50); do
+# Fails here, not in the agent checks, so an SSH problem is not reported as a logged-out agent.
+for i in $(seq 50); do
   ssh "${ssh_opts[@]}" dev@127.0.0.1 true 2>/dev/null && break
+  [ "$i" != 50 ] || { ssh "${ssh_opts[@]}" dev@127.0.0.1 true >&2 || true; echo "No SSH to dev@127.0.0.1:$port" >&2; exit 1; }
   sleep 0.2
 done
 for a in ${enabled[@]+"${enabled[@]}"}; do
