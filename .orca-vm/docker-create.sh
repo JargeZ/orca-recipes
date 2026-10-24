@@ -44,10 +44,12 @@ trap '[ "$ok" = 1 ] || { docker logs "$name" >&2 2>&1 || true; docker rm -fv "$n
 
 run_opts=()
 # Podman (copier `podman`), rootless inside without --privileged: its user namespaces need seccomp and
-# AppArmor off and an unmasked /proc, slirp4netns needs /dev/net/tun; storage is an anonymous volume,
-# removed by `docker rm -v` in docker-destroy.sh. --init reaps the background service.
+# AppArmor off and an unmasked /proc, slirp4netns needs /dev/net/tun (SELinux labels off, or an SELinux
+# host denies it); storage is an anonymous volume, removed by `docker rm -v` in docker-destroy.sh.
+# --init reaps the background service.
 [ "$podman" != true ] || run_opts+=(--init --device /dev/net/tun -v /home/dev/.local/share/containers
-  --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined)
+  --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined
+  --security-opt label=disable)
 docker run -d --name "$name" -p 127.0.0.1::22 ${run_opts[@]+"${run_opts[@]}"} ${mounts[@]+"${mounts[@]}"} \
   -e "ORCA_SSH_PUBLIC_KEY=$(cat "$key.pub")" "$image" >&2
 port="$(docker port "$name" 22/tcp | head -1 | sed 's/.*://')"

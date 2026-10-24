@@ -79,11 +79,14 @@ host kernel, where every other container and the agent login volumes live.
 
 `docker-create.sh` passes only what rootless Podman needs and no extra capabilities:
 `--security-opt seccomp=unconfined` (Docker's profile blocks the user namespace clone),
-`apparmor=unconfined`, `systempaths=unconfined` (nested containers mount `/proc`) and
+`apparmor=unconfined`, `systempaths=unconfined` (nested containers mount `/proc`), `label=disable`
+(an SELinux host, such as Fedora, denies `/dev/net/tun` otherwise) and
 `--device /dev/net/tun` (slirp4netns/pasta networking). It also adds an anonymous volume at
 `~/.local/share/containers`, because native overlay can't nest on the container's overlay root.
 `newuidmap`/`newgidmap` run with file caps instead of setuid, as in `quay.io/podman/stable`: a setuid
 one runs as root, not as the user namespace's owner, and gets EPERM without `CAP_SYS_ADMIN`.
+The subordinate ids of `dev` are `1-999` and `1001-65535`, not `100000:65536`: a rootless Podman
+host maps only 65537 ids into the workspace container.
 
 Limits compared to a real Docker host:
 - No BuildKit or buildx: its builder is a privileged container. `DOCKER_BUILDKIT=0` routes `docker build`
