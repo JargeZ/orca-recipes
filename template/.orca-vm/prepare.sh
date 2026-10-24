@@ -29,11 +29,14 @@ for a in "${agents[@]}"; do
   ans=y
   [ ! -t 0 ] || read -r -p "Set up $label in workspaces? [Y/n] " ans
   case "$ans" in
-    [nN]*) ! docker volume inspect "$volume" >/dev/null 2>&1 \
-      || echo "  Volume '$volume' already exists, so workspaces still use $label; \`docker volume rm $volume\` drops it." >&2 ;;
+    # An existing volume still enables the agent in workspaces, so its login is checked anyway.
+    [nN]*) if docker volume inspect "$volume" >/dev/null 2>&1; then
+        chosen+=("$a")
+        echo "  Volume '$volume' already exists, so workspaces still use $label; \`docker volume rm $volume\` drops it." >&2
+      fi ;;
     *) chosen+=("$a")
       # The volume marks the agent as set up: the base image installs only those agents.
-      docker volume create "$volume" >/dev/null ;;
+      ensure_volume "$volume" ;;
   esac
 done
 

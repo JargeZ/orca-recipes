@@ -15,6 +15,8 @@ git clone -q --branch "$repo_ref" "$root" "$src" >&2
 # the checkout. infra.Dockerfile restores the file from git.
 rm -f "$src/.dockerignore"
 
+# Podman builds OCI images by default, which drop SHELL and run RUN under /bin/sh; Docker ignores this.
+export BUILDAH_FORMAT=docker
 docker build -t "$image-dev" -f "$root/$dev_dockerfile" "$root" >&2
 docker build -t "$image" -f "$here/infra.Dockerfile" --build-context repo="$src" \
   --build-arg DEV_IMAGE="$image-dev" --build-arg GIT_HOST="$git_host" --build-arg AGENTS="$(volume_agents)" \

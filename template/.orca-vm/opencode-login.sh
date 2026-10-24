@@ -7,7 +7,7 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
-docker volume create "$opencode_volume" >/dev/null
+ensure_volume "$opencode_volume"
 require_agent_image opencode
 
 # --standalone: a private in-process server that exits with the command, instead of the background

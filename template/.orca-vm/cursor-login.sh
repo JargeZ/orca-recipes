@@ -7,7 +7,7 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
-docker volume create "$cursor_volume" >/dev/null
+ensure_volume "$cursor_volume"
 require_agent_image cursor
 
 check() {

@@ -159,7 +159,7 @@ Then provision:
 `prepare.sh` first asks `[Y/n]` for each agent (Claude Code, Cursor Agent, OpenCode); without a
 terminal it sets up all of them. For each chosen agent it creates the login volume. The image
 installs and workspaces mount only the agents whose login volume exists, so answering `n` for an
-agent already set up does not remove it (`docker volume rm` and a rebuild do). Then it runs the individual scripts in order and says what each step does. Every step checks
+agent already set up does not remove it (`docker volume rm` and a rebuild do), and its login is still checked. Then it runs the individual scripts in order and says what each step does. Every step checks
 first and only asks for input when something is missing or broken, so if anything breaks later (an
 expired token, a logged-out agent), rerunning `prepare.sh` fixes it.
 

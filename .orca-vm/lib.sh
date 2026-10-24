@@ -79,6 +79,9 @@ secret_set() {  # secret_set <name> <label> <comment> <token>
   opencode_run() { docker run --rm -u dev --entrypoint opencode -v "$opencode_mount" "$@"; }  # opencode_run [-it] <image> <args>
 }
 
+# Podman's `volume create` fails on an existing volume; Docker's is a no-op.
+ensure_volume() { docker volume inspect "$1" >/dev/null 2>&1 || docker volume create "$1" >/dev/null; }
+
 # Agents set up = those whose login volume exists; docker-base-image.sh installs only these.
 volume_agents() {
   local a

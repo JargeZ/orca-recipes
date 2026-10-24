@@ -7,7 +7,7 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 
-docker volume create "$claude_volume" >/dev/null
+ensure_volume "$claude_volume"
 require_agent_image claude
 
 check() {
