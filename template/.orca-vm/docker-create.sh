@@ -42,16 +42,25 @@ name="$(printf 'orca-%s-%s' "${ORCA_RECIPE_ID:-docker}" "${ORCA_VM_INSTANCE_ID:-
 ok=0
 trap '[ "$ok" = 1 ] || { docker logs "$name" >&2 2>&1 || true; docker rm -fv "$name" >/dev/null 2>&1 || true; }' EXIT
 
-run_opts=()
+run_opts=() cmd=()
 # Podman (copier `podman`), rootless inside without --privileged: its user namespaces need seccomp and
-# AppArmor off and an unmasked /proc, slirp4netns needs /dev/net/tun (SELinux labels off, or an SELinux
-# host denies it); storage is an anonymous volume, removed by `docker rm -v` in docker-destroy.sh.
-# --init reaps the background service.
-[ "$podman" != true ] || run_opts+=(--init --device /dev/net/tun -v /home/dev/.local/share/containers
-  --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined
-  --security-opt label=disable)
+# AppArmor off and an unmasked /proc, slirp4netns needs /dev/net/tun; storage is an anonymous volume,
+# removed by `docker rm -v` in docker-destroy.sh. An init reaps the background service.
+if [ "$podman" = true ]; then
+  run_opts+=(--device /dev/net/tun -v /home/dev/.local/share/containers
+    --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined)
+  # A Podman host labels containers container_t, which SELinux denies the tun device: its type for nested
+  # engines instead, which can't exec the host's --init binary, so the image's catatonit is the init.
+  # Docker Engine labels nothing unless its daemon enables SELinux.
+  if host_is_podman; then
+    run_opts+=(--security-opt label=type:container_engine_t --entrypoint /usr/bin/catatonit)
+    cmd=(-- /usr/local/bin/orca-docker-ssh-entrypoint)
+  else
+    run_opts+=(--init)
+  fi
+fi
 docker run -d --name "$name" -p 127.0.0.1::22 ${run_opts[@]+"${run_opts[@]}"} ${mounts[@]+"${mounts[@]}"} \
-  -e "ORCA_SSH_PUBLIC_KEY=$(cat "$key.pub")" "$image" >&2
+  -e "ORCA_SSH_PUBLIC_KEY=$(cat "$key.pub")" "$image" ${cmd[@]+"${cmd[@]}"} >&2
 port="$(docker port "$name" 22/tcp | head -1 | sed 's/.*://')"
 
 host_key=""

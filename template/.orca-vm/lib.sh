@@ -79,6 +79,9 @@ secret_set() {  # secret_set <name> <label> <comment> <token>
   opencode_run() { docker run --rm -u dev --entrypoint opencode -v "$opencode_mount" "$@"; }  # opencode_run [-it] <image> <args>
 }
 
+# The host's `docker` is Podman (podman-docker or a wrapper script), not Docker Engine.
+host_is_podman() { docker --version 2>/dev/null | grep -qi podman; }
+
 # Podman's `volume create` fails on an existing volume; Docker's is a no-op.
 ensure_volume() { docker volume inspect "$1" >/dev/null 2>&1 || docker volume create "$1" >/dev/null; }
 
