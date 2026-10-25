@@ -89,8 +89,9 @@ entrypoint there; on Docker hosts `--init` stays (Docker Engine sets no SELinux 
 `~/.local/share/containers`, because native overlay can't nest on the container's overlay root.
 `newuidmap`/`newgidmap` run with file caps instead of setuid, as in `quay.io/podman/stable`: a setuid
 one runs as root, not as the user namespace's owner, and gets EPERM without `CAP_SYS_ADMIN`.
-The subordinate ids of `dev` are `1-999` and `1001-65535`, not `100000:65536`: a rootless Podman
-host maps only 65537 ids into the workspace container.
+`docker-entrypoint.sh` writes the subordinate ids of `dev` at start: `1-999` and `1001` up to the last id
+the container has (at most `65535`), not `100000:65536`. A rootless Podman host maps only 65537 ids into
+the workspace container, and fewer when that host is itself a container.
 
 Limits compared to a real Docker host:
 - No BuildKit or buildx: its builder is a privileged container. `DOCKER_BUILDKIT=0` routes `docker build`

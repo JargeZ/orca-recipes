@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier; rerun `.orca-vm/update.sh` instead of editing.
-_commit: 46dc54f
+_commit: 1da46ca
 _src_path: .
 claude_volume: orca-claude
 cursor_volume: orca-cursor

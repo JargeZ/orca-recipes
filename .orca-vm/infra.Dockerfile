@@ -50,9 +50,8 @@ RUN apt-get update \
 
 # User namespace for dev. A setuid newuidmap acts as root, not as the namespace owner, and lacks
 # CAP_SYS_ADMIN in a Docker container: file caps instead, as quay.io/podman/stable does.
-# Ranges within 1-65535 (minus dev's own 1000): a rootless Podman host maps only 65537 ids into this container.
-RUN printf 'dev:1:999\ndev:1001:64535\n' | tee /etc/subuid > /etc/subgid \
-    && chmod u-s /usr/bin/newuidmap /usr/bin/newgidmap \
+# docker-entrypoint.sh writes /etc/subuid and /etc/subgid from the ids this container really has.
+RUN chmod u-s /usr/bin/newuidmap /usr/bin/newgidmap \
     && setcap cap_setuid=ep /usr/bin/newuidmap && setcap cap_setgid=ep /usr/bin/newgidmap
 
 # Storage: docker-create.sh mounts a volume here (native overlay can't nest on the container's overlay root).
