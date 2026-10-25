@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # Sourced by the recipe scripts. stdout is reserved for each script's final JSON.
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+: "${USER:=$(id -un)}"  # unset under docker exec and cron; set -u fails on $USER
 # shellcheck source=config.sh
 source "$here/config.sh"
 
