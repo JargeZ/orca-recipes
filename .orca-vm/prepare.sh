@@ -45,14 +45,15 @@ if [ -n "$origin" ] && [ "$(repo_path "$origin")" != "$(repo_path "$repo_url")" 
 fi
 
 # Asked up front so the long steps run unattended. --agents or --yes skip the questions.
-chosen=()
+chosen=() created=()  # created: volumes made by this run, removed again if that agent's login is skipped
+new_volume() { docker volume inspect "$1" >/dev/null 2>&1 || created+=("$1"); ensure_volume "$1"; }
 if [ -n "$want" ]; then
   IFS=, read -ra chosen <<<"$want"
   for a in "${chosen[@]}"; do
     [[ " ${agents[*]} " == *" $a "* ]] || { echo "Unknown agent '$a' in --agents; known: ${agents[*]}" >&2; exit 2; }
   done
   # Agents not in the list are not set up or checked, and their volumes stay as they are.
-  for a in "${chosen[@]}"; do ensure_volume "$(agent_var "$a" volume)"; done
+  for a in "${chosen[@]}"; do new_volume "$(agent_var "$a" volume)"; done
 else
   for a in "${agents[@]}"; do
     label="$(agent_var "$a" label)" volume="$(agent_var "$a" volume)"
@@ -66,7 +67,7 @@ else
         fi ;;
       *) chosen+=("$a")
         # The volume marks the agent as set up: the base image installs only those agents.
-        ensure_volume "$volume" ;;
+        new_volume "$volume" ;;
     esac
   done
 fi
@@ -81,10 +82,24 @@ step "Base image (docker build)"
 "$here/docker-base-image.sh"
 echo "Image built." >&2
 
+# Interactive: a failed or cancelled (Ctrl+C) login skips only that agent; rerun prepare.sh to retry.
+# The INT trap keeps this script alive while Ctrl+C stops the login; children get the default handler.
+trap 'echo >&2' INT
 for a in ${chosen[@]+"${chosen[@]}"}; do
   step "$(agent_var "$a" label) login (shared Docker volume)"
-  "$here/$a-login.sh" ${yes:+--yes}
+  if [ -n "$yes" ]; then "$here/$a-login.sh" --yes; continue; fi  # unattended: a failure stops prepare.sh
+  "$here/$a-login.sh" && continue
+  label="$(agent_var "$a" label)" volume="$(agent_var "$a" volume)"
+  if [[ " ${created[*]} " == *" $volume "* ]]; then
+    # Without its volume workspaces don't mount the agent, so the doctor step doesn't check it.
+    docker volume rm "$volume" >/dev/null
+    echo "Skipped $label: workspaces won't have it. Rerun .orca-vm/prepare.sh to set it up." >&2
+  else
+    echo "Skipped $label: volume '$volume' stays, so workspaces (and the doctor step) still check its" \
+      "login and fail. Rerun .orca-vm/prepare.sh to log in, or \`docker volume rm $volume\` to drop it." >&2
+  fi
 done
+trap - INT
 
 step "orca vm recipe doctor: real create + destroy of a workspace (takes a minute)"
 report="$("$orca_cli" vm recipe doctor docker --repo-path "$root" --provision --json || true)"
