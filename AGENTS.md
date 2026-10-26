@@ -58,9 +58,9 @@ Then the workspace is `--environment <name>` in the CLI, for example
 State is in `.orca-vm/.workspaces/<name>.json` (git-ignored).
 
 Orca sees an ordinary SSH host, not a recipe workspace: remove it with `workspace.sh rm`, not from
-the Orca UI. Orca has no CLI command to add an SSH host or manage its server, so the script calls
-the runtime RPC that the `orca` CLI uses (`ssh.addTarget`, `ssh.connect`, `managedServer.forget`,
-`ssh.removeTarget`) through Orca's own client. These methods are internal to Orca and can change in
+the Orca UI. Orca has no CLI command to add, connect or remove an SSH host, so the script calls
+the runtime RPC that the `orca` CLI uses (`ssh.addTarget`, `ssh.connect`, `ssh.removeTarget`)
+through Orca's own client; the server is forgotten with `orca environment forget`. These methods are internal to Orca and can change in
 any release. The script finds Orca from the CLI on `PATH`: `orca` (macOS) or `orca-ide` (Linux).
 If it does not find the app binary, set `ORCA_APP_EXECUTABLE`.
 

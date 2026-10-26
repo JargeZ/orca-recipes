@@ -6,8 +6,8 @@
 # Then use it by name: orca terminal create --environment <name> --worktree path:<project_root>
 # Non-interactive: a missing prerequisite exits non-zero with what to do. A failed add rolls back.
 # Not a recipe workspace: Orca sees an SSH host, so remove it with `rm`, not from the Orca UI.
-# The SSH host and server management go through the runtime RPC the orca CLI uses (no CLI commands
-# for them); these methods are internal to Orca and may change between releases.
+# The SSH host goes through the runtime RPC the orca CLI uses (no CLI commands for it); these
+# methods are internal to Orca and may change between releases.
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
@@ -62,7 +62,7 @@ remove() {
   env="$(jq -r '.environmentId // empty' "$state")"
   target="$(jq -r '.targetId // empty' "$state")"
   # Forget, not stop: the container goes away below, nothing on it needs cleaning.
-  [ -z "$env" ] || rpc managedServer.forget "$(jq -nc --arg s "$env" '{selector: $s}')" >/dev/null \
+  [ -z "$env" ] || orca environment forget --environment "$env" --yes --json >/dev/null \
     || echo "Orca server '$name' was not forgotten, continuing" >&2
   [ -z "$target" ] || rpc ssh.removeTarget "$(jq -nc --arg t "$target" '{targetId: $t}')" >/dev/null \
     || echo "SSH host '$name' was not removed from Orca, continuing" >&2
