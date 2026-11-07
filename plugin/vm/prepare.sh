@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Palette "Local Docker: prepare" runs it: provisions everything the "Local Docker" Orca recipe needs (idempotent).
+# Palette "Docker VM: prepare" runs it: provisions everything the "Docker VM" Orca recipe needs (idempotent).
 # Asks which agents to set up, then: git token → base image → each chosen agent's login → end-to-end
 # self-test (real create + destroy). Every step checks first and only asks for input when something is
 # missing or broken, so rerunning it is how you fix things.
@@ -94,4 +94,4 @@ result="$(ORCA_VM_INSTANCE_ID="prepare-$(date +%s)" ORCA_RECIPE_RESULT_SCHEMA_VE
 jq '{recipeResult: .}' <<<"$result" | "$here/docker-destroy.sh" >/dev/null
 echo "Self-test: ok." >&2
 
-printf '\nAll set: Orca can now create "Local Docker" workspaces for this repo.\n' >&2
+printf '\nAll set: Orca can now create "Docker VM" workspaces for this repo.\n' >&2

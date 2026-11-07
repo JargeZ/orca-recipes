@@ -307,7 +307,7 @@ orca-plugin.json           manifest: trusted-worker, the vmRecipe, palette comma
 plugin/vm/                 the recipe scripts for the plugin, a copy of template/.orca-vm/
 plugin/build.py            builds plugin/recipes/docker.json from plugin/vm/ (--check: is it stale)
 plugin/recipes/docker.json generated, committed: the recipe Orca reads
-plugin/main.ts             worker: palette commands, run plugin/vm/ scripts in a terminal
+plugin/main.ts             worker: palette commands, status bar item, run plugin/vm/ scripts in a terminal
 plugin/prompts/dev-dockerfile.md  prompt for an agent to write the project's dev.Dockerfile
 tests/plugin-e2e.sh        runs docker.json the way Orca does: create, SSH, destroy
 ```
@@ -329,6 +329,17 @@ of a phase into the command as heredocs. The command unpacks them once to
 `~/.cache/orca-docker/<hash>/` and runs them there (create is ~18 KB). No minification or base64: the
 plugin listing policy forbids obfuscated code. The worker knows its own path (`import.meta.url`), so
 the palette commands run `plugin/vm/*.sh` directly in a terminal of the focused local workspace.
+
+The worker and the focused workspace: the palette passes a command no workspace, and
+`workspace.readContext` has no id, so the worker matches local workspaces (`hostId` `"local"`) by name
+and branch, and, when several match, by the focused workspace's terminal ids in
+`orca terminal list --json`. It opens the terminal with the Orca CLI
+(`orca terminal create --worktree path:<path> --focus`): the host API's `terminal.create` opens a
+background tab nobody sees. Not `--worktree active`: that is the worktree of the CLI's cwd, not the
+focused one. The status bar item shows the focused repo's first missing step from
+`plugin/vm/status.sh` (dev.Dockerfile, Docker, image, git token, agent volume, image older than the
+last dev.Dockerfile commit), refreshed on `workspace.changed` and every 15 s; clicking it runs that
+step (command `next`).
 
 A repo recipe with the same id shadows a plugin recipe, so a project with `docker` in `orca.yaml`
 (the copier way) keeps its own recipe. Both use the same login volumes, image name

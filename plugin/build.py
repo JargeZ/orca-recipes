@@ -53,9 +53,9 @@ def phase(name: str, files: list[str]) -> str:
 recipe = {
     "schemaVersion": 1,
     "id": "docker",
-    "name": "Local Docker",
-    "description": "Runs each workspace in its own local Docker container from the repo's dev.Dockerfile,"
-    " with Claude Code, Cursor Agent, OpenCode, git and gh logged in. Set up with \"Local Docker: prepare\".",
+    "name": "Docker VM",
+    "description": "One container on this machine per workspace, not privileged, with a git token for this"
+    " repository only and Docker inside through rootless Podman. Set up with \"Docker VM: prepare\".",
     "checkoutMode": "provisioned-root",
     "create": phase("create", ["config.sh", "lib.sh", "docker-create.sh"]),
     "destroy": phase("destroy", ["docker-destroy.sh"]),

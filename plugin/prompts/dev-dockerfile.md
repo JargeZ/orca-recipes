@@ -1,4 +1,4 @@
-Write `dev.Dockerfile` in the root of this repository. The Orca plugin "Local Docker" builds it as the
+Write `dev.Dockerfile` in the root of this repository. The Orca plugin "Docker VM" builds it as the
 base image of each workspace container. On top, the plugin adds sshd, the `dev` user (uid 1000),
 git, gh, Claude Code, Cursor Agent, OpenCode and rootless Podman, then copies the repository to
 `/home/dev/<repo name>` and runs `ORCA_SYNC_COMMAND` there as `dev`.
@@ -42,4 +42,4 @@ ENV VIRTUAL_ENV=/opt/venv \
 
 When it is written, check it: `docker build -f dev.Dockerfile .` must succeed. Then commit
 `dev.Dockerfile` and push it: the workspace image takes only committed files. Then tell me to run
-"Local Docker: prepare" from the Orca command palette.
+"Docker VM: prepare" from the Orca command palette.

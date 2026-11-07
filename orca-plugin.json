@@ -1,28 +1,94 @@
 {
   "$schema": "https://raw.githubusercontent.com/stablyai/orca/main/docs/schemas/plugins/orca-plugin.v2.schema.json",
   "manifestVersion": 2,
-  "id": "local-docker",
-  "name": "Local Docker",
+  "id": "docker-vm",
+  "name": "Docker VM",
   "version": "0.1.0",
   "execution": "trusted-worker",
-  "description": "Runs each Orca workspace in its own local Docker container, built from the repo's dev.Dockerfile, with Claude Code, Cursor Agent, OpenCode, git and gh logged in. Adds Local Docker under Run on > Per-Workspace Environment.",
-  "author": { "name": "JargeZ", "url": "https://github.com/JargeZ" },
+  "description": "Isolated development environments: each Orca workspace runs in its own Docker container on your machine, so toolchains, dependencies and the agents' work leave no trace on the host. Fine-grained git tokens for one repository, no privileged containers, rootless Podman inside. Note: host ports stay reachable from inside. Please report problems and ideas at https://github.com/JargeZ/orca-recipes/issues",
+  "author": {
+    "name": "JargeZ",
+    "url": "https://github.com/JargeZ"
+  },
   "repository": "https://github.com/JargeZ/orca-recipes",
   "license": "MIT",
-  "engines": { "orca": ">=1.4.248" },
+  "engines": {
+    "orca": ">=1.4.248"
+  },
   "pluginApi": 1,
   "main": "plugin/main.ts",
   "contributes": {
-    "vmRecipes": [{ "path": "plugin/recipes/docker.json" }],
+    "vmRecipes": [
+      {
+        "path": "plugin/recipes/docker.json"
+      }
+    ],
     "commands": [
-      { "id": "copy-prompt", "title": "Local Docker: copy dev.Dockerfile prompt" },
-      { "id": "prepare", "title": "Local Docker: prepare", "when": "workspace" },
-      { "id": "git-token", "title": "Local Docker: git token", "when": "workspace" },
-      { "id": "base-image", "title": "Local Docker: rebuild image", "when": "workspace" },
-      { "id": "login.claude", "title": "Local Docker: log in Claude Code", "when": "workspace" },
-      { "id": "login.cursor", "title": "Local Docker: log in Cursor Agent", "when": "workspace" },
-      { "id": "login.opencode", "title": "Local Docker: log in OpenCode", "when": "workspace" }
+      {
+        "id": "next",
+        "title": "Docker VM: next setup step",
+        "when": "workspace"
+      },
+      {
+        "id": "copy-prompt",
+        "title": "Docker VM: copy dev.Dockerfile prompt"
+      },
+      {
+        "id": "prepare",
+        "title": "Docker VM: prepare",
+        "when": "workspace"
+      },
+      {
+        "id": "git-token",
+        "title": "Docker VM: git token",
+        "when": "workspace"
+      },
+      {
+        "id": "base-image",
+        "title": "Docker VM: rebuild image",
+        "when": "workspace"
+      },
+      {
+        "id": "login.claude",
+        "title": "Docker VM: log in Claude Code",
+        "when": "workspace"
+      },
+      {
+        "id": "login.cursor",
+        "title": "Docker VM: log in Cursor Agent",
+        "when": "workspace"
+      },
+      {
+        "id": "login.opencode",
+        "title": "Docker VM: log in OpenCode",
+        "when": "workspace"
+      }
+    ],
+    "statusBarItems": [
+      {
+        "id": "status",
+        "text": "Docker VM",
+        "icon": "package",
+        "tooltip": "Docker VM setup of this repository",
+        "command": "next"
+      }
+    ],
+    "events": [
+      {
+        "on": "workspace.changed"
+      }
     ]
   },
-  "capabilities": [{ "kind": "workspace:read" }, { "kind": "terminal:send" }]
+  "capabilities": [
+    {
+      "kind": "workspace:read"
+    },
+    {
+      "kind": "terminal:send"
+    },
+    {
+      "kind": "notifications:show"
+    }
+  ],
+  "homepage": "https://github.com/JargeZ/orca-recipes#readme"
 }

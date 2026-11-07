@@ -26,4 +26,4 @@ opencode_volume=orca-opencode
 # Per-project state outside the repo: the SSH key Orca connects with.
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/orca-docker/$project_slug"
 # How a message names a step the person runs: a command palette entry of the plugin.
-hint() { printf '"Local Docker: %s" in the Orca command palette' "$1"; }
+hint() { printf '"Docker VM: %s" in the Orca command palette' "$1"; }
