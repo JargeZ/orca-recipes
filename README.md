@@ -43,6 +43,29 @@ every workspace, in one click.
 
 ## 🚀 Installation
 
+Two ways, with the same result: the **Orca plugin** (nothing in your repo except `dev.Dockerfile`)
+or the **copier template** (the recipe code lives in your repo and you can change it).
+
+### 🧩 As an Orca plugin
+
+**Requirements:** macOS or Linux, Docker (or OrbStack), `jq`, Orca 1.4.248 or later. The repo must
+have an `origin` remote on GitHub or GitLab.
+
+1. In Orca: **Settings → Plugins → Add plugin → From a Git URL…** →
+   `https://github.com/JargeZ/orca-recipes`, then **Install**, approve and turn it on.
+2. No `dev.Dockerfile` yet? Command palette → **Local Docker: copy dev.Dockerfile prompt**, paste it to
+   an agent in your repo. It writes `dev.Dockerfile` (with `ENV ORCA_SYNC_COMMAND`, the command that
+   installs the deps). Commit and push it.
+3. Command palette → **Local Docker: prepare**. It opens a terminal: git token → base image → agent
+   logins → self-test. Safe to rerun.
+4. Create a workspace: **Run on → Per-Workspace Environment → Local Docker**.
+
+The palette also has **rebuild image** (after a `dev.Dockerfile` or lock change), **git token** and
+**log in** for each agent. A repo with its own `docker` recipe in `orca.yaml` (the copier way) keeps
+using it.
+
+### 📦 As a copier template
+
 **Requirements:** macOS or Linux, Docker (or OrbStack), `jq`, `uv`.
 
 **1. Render the template** in the root of your project:
@@ -111,6 +134,7 @@ The [Taskfile](Taskfile.yaml) is the entry point for tests and linters:
 ```bash
 task test        # render + shellcheck + orca doctor + update checks (fast, offline)
 task test:e2e    # full Docker run: build, create, SSH checks, destroy
+task test:plugin-e2e  # the plugin recipe as Orca runs it (after bash plugin/vm/prepare.sh)
 ```
 
 ## 🤝 Contributing

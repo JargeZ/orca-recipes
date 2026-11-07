@@ -17,9 +17,28 @@ tasks:
     cmds:
       - task: render
       - ./tests/render.sh
+      - task: plugin:check
 
   test:e2e:
     desc: Full run of this repo's recipe against Docker - build image, create, SSH checks, destroy (slow, needs network)
     cmds:
       - task: render
       - ./tests/e2e.sh
+
+  plugin:build:
+    desc: Rebuild the Orca plugin recipe (plugin/recipes/docker.json) from plugin/vm/
+    cmds:
+      - python3 plugin/build.py
+
+  plugin:check:
+    desc: Offline checks of the Orca plugin - recipe up to date, shellcheck, manifest (if the Orca CLI is on PATH)
+    env: {PYTHONWARNINGS: ignore::UserWarning}
+    cmds:
+      - python3 plugin/build.py --check
+      - cd plugin/vm && uvx --from shellcheck-py shellcheck -x -P SCRIPTDIR ./*.sh git-credential-orca docker-entrypoint.sh
+      - 'if command -v orca >/dev/null; then orca plugin validate .; else echo "No orca CLI, manifest not validated"; fi'
+
+  test:plugin-e2e:
+    desc: The plugin recipe for real, as Orca runs it - create, SSH checks, destroy (run `bash plugin/vm/prepare.sh` first)
+    cmds:
+      - ./tests/plugin-e2e.sh

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stablyai/orca/main/docs/schemas/plugins/orca-plugin.v2.schema.json",
+  "manifestVersion": 2,
+  "id": "local-docker",
+  "name": "Local Docker",
+  "version": "0.1.0",
+  "execution": "trusted-worker",
+  "description": "Runs each Orca workspace in its own local Docker container, built from the repo's dev.Dockerfile, with Claude Code, Cursor Agent, OpenCode, git and gh logged in. Adds Local Docker under Run on > Per-Workspace Environment.",
+  "author": { "name": "JargeZ", "url": "https://github.com/JargeZ" },
+  "repository": "https://github.com/JargeZ/orca-recipes",
+  "license": "MIT",
+  "engines": { "orca": ">=1.4.248" },
+  "pluginApi": 1,
+  "main": "plugin/main.ts",
+  "contributes": {
+    "vmRecipes": [{ "path": "plugin/recipes/docker.json" }],
+    "commands": [
+      { "id": "copy-prompt", "title": "Local Docker: copy dev.Dockerfile prompt" },
+      { "id": "prepare", "title": "Local Docker: prepare", "when": "workspace" },
+      { "id": "git-token", "title": "Local Docker: git token", "when": "workspace" },
+      { "id": "base-image", "title": "Local Docker: rebuild image", "when": "workspace" },
+      { "id": "login.claude", "title": "Local Docker: log in Claude Code", "when": "workspace" },
+      { "id": "login.cursor", "title": "Local Docker: log in Cursor Agent", "when": "workspace" },
+      { "id": "login.opencode", "title": "Local Docker: log in OpenCode", "when": "workspace" }
+    ]
+  },
+  "capabilities": [{ "kind": "workspace:read" }, { "kind": "terminal:send" }]
+}

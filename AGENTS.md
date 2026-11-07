@@ -297,6 +297,48 @@ update moves the recipe to `.orca-vm/`, but `orca.yaml` and a Taskfile `includes
 remove `orca-docker-vm/` (only the git-ignored `.ssh/` key stays there; `docker-create.sh` makes a
 new one).
 
+## Orca plugin
+
+The same recipe also ships as an Orca plugin (`orca-plugin.json` at the repo root, code in `plugin/`).
+With the plugin, a project needs only `dev.Dockerfile`: no copier, no `.orca-vm/`, no `orca.yaml`.
+
+```
+orca-plugin.json           manifest: trusted-worker, the vmRecipe, palette commands
+plugin/vm/                 the recipe scripts for the plugin, a copy of template/.orca-vm/
+plugin/build.py            builds plugin/recipes/docker.json from plugin/vm/ (--check: is it stale)
+plugin/recipes/docker.json generated, committed: the recipe Orca reads
+plugin/main.ts             worker: palette commands, run plugin/vm/ scripts in a terminal
+plugin/prompts/dev-dockerfile.md  prompt for an agent to write the project's dev.Dockerfile
+tests/plugin-e2e.sh        runs docker.json the way Orca does: create, SSH, destroy
+```
+
+**`plugin/vm/` is a separate copy, not shared code.** When you change `template/.orca-vm/`, make the
+same change in `plugin/vm/` (and the other way), then `task plugin:build`. Differences of the copy:
+- `config.sh` has no copier answers. It derives every value at run time: `repo_url` from `origin`
+  (ssh → https), `project_slug` from the repo name, `repo_ref` from `ORCA_REPO_REF` or origin's
+  default branch, `state_dir` (SSH key) in `~/.local/state/orca-docker/<slug>`.
+- Podman is always on: no `{% if podman %}` and no `$podman` checks.
+- The sync command is `ENV ORCA_SYNC_COMMAND` in `dev.Dockerfile` (empty: no sync step), not an answer.
+- Messages name palette commands (`hint` in `config.sh`) instead of `.orca-vm/*.sh`.
+- `prepare.sh` ends with its own create + destroy: `orca vm recipe doctor` reads only `orca.yaml`.
+- No `update.sh`, `workspace.sh`, `Taskfile.yaml`: Orca updates the plugin.
+
+Why the recipe carries its scripts: Orca runs a plugin recipe phase as `sh -c <command>` in the repo
+root and does not pass the plugin's path; each command is at most 32 KB. `build.py` writes the scripts
+of a phase into the command as heredocs. The command unpacks them once to
+`~/.cache/orca-docker/<hash>/` and runs them there (create is ~18 KB). No minification or base64: the
+plugin listing policy forbids obfuscated code. The worker knows its own path (`import.meta.url`), so
+the palette commands run `plugin/vm/*.sh` directly in a terminal of the focused local workspace.
+
+A repo recipe with the same id shadows a plugin recipe, so a project with `docker` in `orca.yaml`
+(the copier way) keeps its own recipe. Both use the same login volumes, image name
+(`localhost/<slug>-orca`) and keyring entry when the slug is the same.
+
+Develop: `orca plugin dev load . --approve <fingerprint>` (Orca prints it; a recipe change needs a new
+one), `task plugin:check` (build check, shellcheck, `orca plugin validate .`), `task test:plugin-e2e`.
+Release: bump `version` in `orca-plugin.json`, then tag `v<version>` (the same tag is the copier
+template version) and push the tag. The directory lists the repo by its `orca-plugin` topic.
+
 ## Developing this template
 
 This repo uses its own template: `.orca-vm/`, `dev.Dockerfile` and `orca.yaml` at the root
