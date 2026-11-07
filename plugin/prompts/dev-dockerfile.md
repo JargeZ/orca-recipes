@@ -24,6 +24,8 @@ Rules:
   with their bin dir in `ENV PATH`.
 - Every `ENV` you set reaches the agents' SSH sessions. Put the toolchain bin dirs in `PATH` there.
 - The build context is the repository root, so `COPY` of a lock or version file works if a step needs it.
+- The plugin installs Claude Code, Cursor Agent and OpenCode itself. If the project uses another
+  coding agent, install its CLI here too, for all users (not only root), with its bin dir in `PATH`.
 - Keep the file short and commented. Do not add an ENTRYPOINT, CMD, USER or EXPOSE.
 
 Example for Python with uv:

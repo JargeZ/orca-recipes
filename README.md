@@ -73,14 +73,28 @@ The plugin is new: please report problems and ideas in
 **Requirements:** macOS or Linux, Docker (or OrbStack), `jq`, Orca 1.4.248 or later. The repo must
 have an `origin` remote on GitHub or GitLab.
 
-1. In Orca: **Settings → Plugins → Add plugin → From a Git URL…** →
+#### Setup, step by step
+
+Do steps 2–4 once for each project.
+
+1. **Install the plugin.** In Orca: **Settings → Plugins → Add plugin → From a Git URL…** →
    `https://github.com/JargeZ/orca-recipes`, then **Install**, approve and turn it on.
-2. No `dev.Dockerfile` yet? Command palette → **Docker VM: copy dev.Dockerfile prompt**, paste it to
-   an agent in your repo. It writes `dev.Dockerfile` (with `ENV ORCA_SYNC_COMMAND`, the command that
-   installs the deps). Commit and push it.
-3. Command palette → **Docker VM: prepare**. It opens a terminal: git token → base image → agent
-   logins → self-test. Safe to rerun.
-4. Create a workspace: **Run on → Per-Workspace Environment → Docker VM**.
+2. **Let an agent write `dev.Dockerfile`.** Open the project's workspace in Orca. In the command
+   palette (<kbd>Cmd</kbd>+<kbd>J</kbd>), run **Docker VM: copy dev.Dockerfile prompt** and paste the
+   prompt to an agent in this project. The agent finds the project's toolchain and writes
+   `dev.Dockerfile`, with `ENV ORCA_SYNC_COMMAND` (the command that installs the dependencies).
+   Check the file, then commit and push it: the image takes only committed files.
+   > [!TIP]
+   > The plugin installs Claude Code, Cursor Agent and OpenCode itself. If you use a different
+   > agent, tell the agent to also install that agent's CLI in `dev.Dockerfile`.
+3. **Run the setup wizard.** In the same workspace, run **Docker VM: prepare** from the command
+   palette (or click **Docker VM: set up** in the status bar). A terminal opens: answer its
+   questions. It asks which agents to set up, asks for a git token for this repository (it shows
+   where to make one), builds the image, logs in the agents and runs a test workspace. You can run
+   it again at any time: it only asks for what is missing or broken.
+4. **Create disposable workspaces.** When the status bar shows **Docker VM: ready**, create a
+   workspace with **Run on → Per-Workspace Environment → Docker VM**. Each one is a new container;
+   delete the workspace and its container goes away.
 
 The status bar shows the repo's next step (**Docker VM: add dev.Dockerfile**, **set up**,
 **rebuild image**, **ready**); click it to run that step. The palette also has **rebuild image** (after a `dev.Dockerfile` or lock change) and **git token**.
