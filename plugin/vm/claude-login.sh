@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Hand-run (also step 3 of prepare.sh; FORCE=1 to log in again): signs Claude Code in once, inside a
+# container, into the named volume every workspace mounts at CLAUDE_CONFIG_DIR - how Anthropic's dev
+# container guide persists auth. Claude Code refreshes that login itself; nothing is stored on the host.
+# --yes (and no terminal) only checks, never logs in. Idempotent: checks the login with a real request and only asks you to log in when that fails.
+set -euo pipefail
+# shellcheck source=lib.sh
+source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
+parse_yes "$@"
+
+ensure_volume "$claude_volume"
+require_agent_image claude
+
+check() {
+  echo "Checking the Claude login in volume '$claude_volume' with a one-line request..." >&2
+  local out
+  if out="$(claude_run "$image" -p --model haiku 'Reply with just: ok' 2>&1)"; then
+    echo "Claude login works: $(claude_run "$image" auth status --json | jq -r '"\(.email // "?") (\(.authMethod), \(.subscriptionType // "?"))"')." >&2
+  else
+    echo "Claude login doesn't work: ${out:-no output}" >&2
+    return 1
+  fi
+}
+
+if { [ -z "${FORCE:-}" ] || [ -n "$yes" ]; } && check; then exit 0; fi
+[ -z "$yes" ] || needs_person "$claude_label is not logged in: run $(hint prepare) on $(hostname)"
+
+cat >&2 <<MSG
+
+Logging in to Claude inside a container. Claude prints a URL: open it, approve, then paste the code
+the browser shows back here (the browser can't reach the container, so it won't redirect).
+MSG
+claude_run -it "$image" auth login
+check || { echo "Still not logged in; rerun $(hint prepare) to try again." >&2; exit 1; }

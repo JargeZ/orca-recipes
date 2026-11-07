@@ -24,13 +24,29 @@
 
 ## ✨ What it is
 
-A recipe template for **Orca ADE** that creates an isolated environment in your local Docker for
-every workspace, in one click.
+Isolated development environments for **Orca ADE**: each workspace runs in its own Docker container
+on your machine, so the project's toolchains, dependencies, caches and the agents' work stay out of
+the host. When you delete the workspace, its container goes away with it. On the host stay only the
+Docker images and volumes, a keychain entry with the git token and an SSH key for Orca.
 
-- 🔐 **Fine-grained git tokens** — the token is scoped to a single repository
-- 🤖 **OAuth login for agents** — log in once, it works in every workspace
-- 🗝️ **Secrets in the system keychain** — macOS Keychain / Linux Secret Service, nothing ends up in the image
-- 🐳 **Docker inside the workspace** — `docker run/build/compose` via rootless Podman, no `--privileged` (optional)
+The isolation comes with a fair bit of security:
+
+- 🔐 **Fine-grained git tokens.** Each workspace gets a GitHub or GitLab token with access to this
+  one repository only, with limited permissions. You can make it on a separate account (for example,
+  a bot account), so agents never act as you.
+- 🛡️ **No privileged containers.** The workspace container does not run `--privileged` and gets no
+  extra capabilities. The host engine can be Docker or Podman.
+- 🐳 **Docker inside, rootless.** Agents get `docker run/build/compose` in the workspace through
+  rootless Podman. The host's Docker socket is not mounted.
+- 🗝️ **Git token in the system keychain.** macOS Keychain or Linux Secret Service, never in the image
+  or in `docker inspect`. macOS and Linux only.
+- 🤖 **OAuth login for agents.** Log in once, and it works in every workspace.
+
+> [!WARNING]
+> The isolation is not a network sandbox. From inside a workspace, the agent can reach ports on the
+> host (also services that listen only on `127.0.0.1`, through `host.docker.internal`) and on your
+> local network. Do not run services on the host that an agent must not reach. A fix is planned, see
+> [TODO.md](TODO.md).
 
 ## 🤖 Supported agents
 
@@ -42,6 +58,55 @@ every workspace, in one click.
 | …others | 💡 [PRs welcome](https://github.com/JargeZ/orca-recipes/pulls) |
 
 ## 🚀 Installation
+
+Two ways, with the same result: the **Orca plugin** (nothing in your repo except `dev.Dockerfile`)
+or the **copier template** (the recipe code lives in your repo and you can change it).
+
+### 🧩 As an Orca plugin: Docker VM
+
+The same environments as the template, without recipe files in your repo: the project gives only
+`dev.Dockerfile`.
+
+The plugin is new: please report problems and ideas in
+[GitHub issues](https://github.com/JargeZ/orca-recipes/issues).
+
+**Requirements:** macOS or Linux, Docker (or OrbStack), `jq`, Orca 1.4.248 or later. The repo must
+have an `origin` remote on GitHub or GitLab.
+
+#### Setup, step by step
+
+Do steps 2–4 once for each project.
+
+1. **Install the plugin.** In Orca: **Settings → Plugins → Add plugin → From a Git URL…** →
+   `https://github.com/JargeZ/orca-recipes`, then **Install**, approve and turn it on.
+2. **Let an agent write `dev.Dockerfile`.** Open the project's workspace in Orca. In the command
+   palette (<kbd>Cmd</kbd>+<kbd>J</kbd>), run **Docker VM: copy dev.Dockerfile prompt** and paste the
+   prompt to an agent in this project. The agent finds the project's toolchain and writes
+   `dev.Dockerfile`, with `ENV ORCA_SYNC_COMMAND` (the command that installs the dependencies).
+   Check the file, then commit and push it: the image takes only committed files.
+   > [!TIP]
+   > The plugin installs Claude Code, Cursor Agent and OpenCode itself. If you use a different
+   > agent, tell the agent to also install that agent's CLI in `dev.Dockerfile`.
+3. **Run the setup wizard.** In the same workspace, run **Docker VM: prepare** from the command
+   palette (or click **Docker VM: set up** in the status bar). A terminal opens: answer its
+   questions. It asks which agents to set up, asks for a git token for this repository (it shows
+   where to make one), builds the image, logs in the agents and runs a test workspace. You can run
+   it again at any time: it only asks for what is missing or broken.
+4. **Create disposable workspaces.** When the status bar shows **Docker VM: ready**, create a
+   workspace with **Run on → Per-Workspace Environment → Docker VM**. Each one is a new container;
+   delete the workspace and its container goes away.
+
+The status bar shows the repo's next step (**Docker VM: add dev.Dockerfile**, **set up**,
+**rebuild image**, **ready**); click it to run that step. The palette also has **rebuild image** (after a `dev.Dockerfile` or lock change) and **git token**.
+A repo with its own `docker` recipe in `orca.yaml` (the copier way) keeps
+using it.
+
+> [!NOTE]
+> Agent logins are shared: one Docker volume per agent (`orca-claude`, `orca-cursor`, `orca-opencode`)
+> is mounted into every workspace of every project. So an agent in one workspace can read that
+> agent's login token and its session history from other projects.
+
+### 📦 As a copier template
 
 **Requirements:** macOS or Linux, Docker (or OrbStack), `jq`, `uv`.
 
@@ -111,6 +176,7 @@ The [Taskfile](Taskfile.yaml) is the entry point for tests and linters:
 ```bash
 task test        # render + shellcheck + orca doctor + update checks (fast, offline)
 task test:e2e    # full Docker run: build, create, SSH checks, destroy
+task test:plugin-e2e  # the plugin recipe as Orca runs it (after bash plugin/vm/prepare.sh)
 ```
 
 ## 🤝 Contributing

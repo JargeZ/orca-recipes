@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# Orca `create`: boots a container from the base image with the shared login volumes of the agents
+# prepare.sh set up, hands it the git token, checks out the workspace branch, reruns the sync command
+# (the lock may have moved since the image), and prints the SSH recipe result.
+# With `checkoutMode: provisioned-root` in the recipe (schema 2) that checkout is the workspace itself:
+# one container per workspace, one entry in Orca. Schema 1 (older Orca) keeps Orca's default of
+# a linked worktree next to a repo_ref checkout.
+# Known Orca gaps for these workspaces:
+#   Source Control and Agent Session History panels stay empty: https://github.com/stablyai/orca/issues/22229
+#   recipe SSH targets lose SSH-host features (session history, Open in VS Code, drag & drop; likely
+#   also the Ports tab, no dedicated issue): https://github.com/stablyai/orca/issues/10946
+set -euo pipefail
+# shellcheck source=lib.sh
+source "$(cd "$(dirname "$0")" && pwd)/lib.sh"
+
+docker image inspect "$image" >/dev/null 2>&1 || { echo "No image $image: run $(hint prepare)" >&2; exit 1; }
+# Agents set up by prepare.sh = those whose login volume exists. Checked first: `docker run -v` would
+# silently create an empty, logged-out volume. The image has only the agents that had a volume at build time.
+enabled=() mounts=()
+with_volume=" $(volume_agents)" in_image="$(image_agents)"
+for a in "${agents[@]}"; do
+  if [[ "$with_volume" != *" $a "* ]]; then
+    echo "$(agent_var "$a" label) is not set up (no volume '$(agent_var "$a" volume)'), skipping it; $(hint prepare) adds it." >&2
+  elif [[ "$in_image" != *" $a "* ]]; then
+    echo "$(agent_var "$a" label) is not in $image, skipping it; $(hint "rebuild image") adds it." >&2
+  else
+    enabled+=("$a"); mounts+=(-v "$(agent_var "$a" mount)")
+  fi
+done
+require_git_token
+schema="${ORCA_RECIPE_RESULT_SCHEMA_VERSION:-1}"
+case "$schema" in 1|2) ;; *) echo "Unsupported ORCA_RECIPE_RESULT_SCHEMA_VERSION=$schema" >&2; exit 1 ;; esac
+[ "$schema" = 2 ] || unset ORCA_REPO_REF_HEAD ORCA_REPO_BRANCH
+
+key="$state_dir/.ssh/id_ed25519"
+if [ ! -f "$key" ]; then
+  mkdir -p "$state_dir/.ssh"
+  ssh-keygen -q -t ed25519 -N '' -C orca-docker -f "$key"
+fi
+
+name="$(printf 'orca-%s-%s' "${ORCA_RECIPE_ID:-docker}" "${ORCA_VM_INSTANCE_ID:-$(date +%s)}" | tr -c 'a-zA-Z0-9_.-' '-' | cut -c1-60)"
+ok=0
+trap '[ "$ok" = 1 ] || { docker logs "$name" >&2 2>&1 || true; docker rm -fv "$name" >/dev/null 2>&1 || true; }' EXIT
+
+run_opts=() cmd=()
+# Podman, rootless inside without --privileged: its user namespaces need seccomp and
+# AppArmor off and an unmasked /proc, slirp4netns needs /dev/net/tun; storage is an anonymous volume,
+# removed by `docker rm -v` in docker-destroy.sh. An init reaps the background service.
+run_opts+=(--device /dev/net/tun -v /home/dev/.local/share/containers
+  --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined)
+# A Podman host labels containers container_t, which SELinux denies the tun device: its type for nested
+# engines instead, which can't exec the host's --init binary, so the image's catatonit is the init.
+# Docker Engine labels nothing unless its daemon enables SELinux.
+if host_is_podman; then
+  run_opts+=(--security-opt label=type:container_engine_t --entrypoint /usr/bin/catatonit)
+  cmd=(-- /usr/local/bin/orca-docker-ssh-entrypoint)
+else
+  run_opts+=(--init)
+fi
+# An explicit network: a host default of netns="host" (containers.conf in quay.io/podman/stable-like
+# hosts) drops -p and shares one network between all workspaces. Docker and Podman both accept bridge.
+docker run -d --name "$name" --network bridge -p 127.0.0.1::22 ${run_opts[@]+"${run_opts[@]}"} ${mounts[@]+"${mounts[@]}"} \
+  -e "ORCA_SSH_PUBLIC_KEY=$(cat "$key.pub")" "$image" ${cmd[@]+"${cmd[@]}"} >&2
+
+port="" host_key=""
+for _ in $(seq 50); do
+  port="$(docker port "$name" 22/tcp 2>/dev/null | head -1 | sed 's/.*://')"
+  host_key="$(docker exec "$name" cat /etc/ssh/ssh_host_ed25519_key.pub 2>/dev/null | cut -d' ' -f1,2)" || true
+  [ -z "$port" ] || [ -z "$host_key" ] || break
+  sleep 0.2
+done
+[ -n "$port" ] || { echo "SSH port 22 of $name is not published on the host (network mode:" \
+  "$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$name" 2>&1)); check the engine's network config" >&2; exit 1; }
+[ -n "$host_key" ] || { echo "container never generated an SSH host key" >&2; exit 1; }
+
+# Host key read via trusted `docker exec`, so replacing a reused port's entry is safe.
+known_hosts="$HOME/.ssh/known_hosts"
+mkdir -p "$HOME/.ssh" && touch "$known_hosts"
+ssh-keygen -R "[127.0.0.1]:$port" -f "$known_hosts" >/dev/null 2>&1 || true
+echo "[127.0.0.1]:$port $host_key" >> "$known_hosts"
+
+# The git token lives only in this container (never in the image): pam_env exports it to every SSH session.
+# glab defaults to gitlab.com; GITLAB_HOST points it at the repo's host.
+env_lines="$git_token_env=$(git_token)"
+[ "$git_token_env" != GITLAB_TOKEN ] || env_lines+=$'\n'"GITLAB_HOST=https://$git_host"
+docker exec -i "$name" sh -c 'cat >> /etc/environment' <<<"$env_lines"
+for k in user.name user.email; do
+  v="$(git config --global "$k" || true)"
+  [ -z "$v" ] || docker exec -u dev "$name" git config --global "$k" "$v"
+done
+
+docker exec -i -u dev "$name" bash -s <<<"$(sync_script)" >&2 \
+  || { echo "Checking out ${ORCA_REPO_BRANCH:-$repo_ref} from $repo_url failed: is it pushed there?" >&2; exit 1; }
+
+# Checks what an Orca session actually gets: SSH login env, each agent's auth, git auth.
+ssh_opts=(-i "$key" -p "$port" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes)
+# Fails here, not in the agent checks, so an SSH problem is not reported as a logged-out agent.
+for i in $(seq 50); do
+  ssh "${ssh_opts[@]}" dev@127.0.0.1 true 2>/dev/null && break
+  [ "$i" != 50 ] || { ssh "${ssh_opts[@]}" dev@127.0.0.1 true >&2 || true; echo "No SSH to dev@127.0.0.1:$port" >&2; exit 1; }
+  sleep 0.2
+done
+for a in ${enabled[@]+"${enabled[@]}"}; do
+  # shellcheck disable=SC2029  # the check runs remotely, as written in lib.sh
+  ssh "${ssh_opts[@]}" dev@127.0.0.1 "$(agent_var "$a" check)" >&2 \
+    || { echo "$(agent_var "$a" label) is not logged in (volume '$(agent_var "$a" volume)'): run $(hint prepare)" >&2; exit 1; }
+done
+for i in $(seq 50); do
+  ssh "${ssh_opts[@]}" dev@127.0.0.1 'docker info >/dev/null 2>&1' && break
+  [ "$i" != 50 ] || { docker exec "$name" tail -5 /var/log/podman.log >&2; echo "Docker API (rootless Podman) did not come up" >&2; exit 1; }
+  sleep 0.2
+done
+# shellcheck disable=SC2029  # project_root expands locally on purpose
+ssh "${ssh_opts[@]}" dev@127.0.0.1 "cd '$project_root' && git ls-remote --exit-code origin HEAD >/dev/null" >&2
+
+jq -n --argjson schema "$schema" --arg name "$name" --argjson port "$port" --arg key "$key" --arg root "$project_root" --arg hk "$host_key" '{
+  schemaVersion: $schema,
+  checkoutMode: "provisioned-root",
+  connection: {
+    type: "ssh",
+    projectRoot: $root,
+    target: { label: $name, host: "127.0.0.1", port: $port, username: "dev", identityFile: $key, identitiesOnly: true }
+  },
+  userData: { provider: "docker", resourceId: $name, hostKey: $hk }
+} | if $schema == 1 then del(.checkoutMode) else . end'
+ok=1
