@@ -47,21 +47,6 @@
         "id": "base-image",
         "title": "Docker VM: rebuild image",
         "when": "workspace"
-      },
-      {
-        "id": "login.claude",
-        "title": "Docker VM: log in Claude Code",
-        "when": "workspace"
-      },
-      {
-        "id": "login.cursor",
-        "title": "Docker VM: log in Cursor Agent",
-        "when": "workspace"
-      },
-      {
-        "id": "login.opencode",
-        "title": "Docker VM: log in OpenCode",
-        "when": "workspace"
       }
     ],
     "statusBarItems": [

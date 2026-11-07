@@ -83,8 +83,8 @@ have an `origin` remote on GitHub or GitLab.
 4. Create a workspace: **Run on → Per-Workspace Environment → Docker VM**.
 
 The status bar shows the repo's next step (**Docker VM: add dev.Dockerfile**, **set up**,
-**rebuild image**, **ready**); click it to run that step. The palette also has **rebuild image** (after a `dev.Dockerfile` or lock change), **git token** and
-**log in** for each agent. A repo with its own `docker` recipe in `orca.yaml` (the copier way) keeps
+**rebuild image**, **ready**); click it to run that step. The palette also has **rebuild image** (after a `dev.Dockerfile` or lock change) and **git token**.
+A repo with its own `docker` recipe in `orca.yaml` (the copier way) keeps
 using it.
 
 > [!NOTE]

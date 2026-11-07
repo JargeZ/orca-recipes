@@ -16,10 +16,7 @@ const prompt = fileURLToPath(new URL('./prompts/dev-dockerfile.md', import.meta.
 const scripts: Record<string, [string, string]> = {
   prepare: ['Docker VM: prepare', 'prepare.sh'],
   'git-token': ['Docker VM: git token', 'git-token-setup.sh'],
-  'base-image': ['Docker VM: rebuild image', 'docker-base-image.sh'],
-  'login.claude': ['Docker VM: log in Claude Code', 'claude-login.sh'],
-  'login.cursor': ['Docker VM: log in Cursor Agent', 'cursor-login.sh'],
-  'login.opencode': ['Docker VM: log in OpenCode', 'opencode-login.sh']
+  'base-image': ['Docker VM: rebuild image', 'docker-base-image.sh']
 }
 
 // Status bar per state from vm/status.sh: label, tone, tooltip, command run on click (none: just shown).

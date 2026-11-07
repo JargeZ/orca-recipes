@@ -26,7 +26,7 @@ check() {
 }
 
 if { [ -z "${FORCE:-}" ] || [ -n "$yes" ]; } && check; then exit 0; fi
-[ -z "$yes" ] || needs_person "$opencode_label is not logged in: run $(hint "log in $opencode_label") on $(hostname)"
+[ -z "$yes" ] || needs_person "$opencode_label is not logged in: run $(hint prepare) on $(hostname)"
 
 cat >&2 <<MSG
 
